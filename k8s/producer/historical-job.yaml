@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nyc-taxi-historical-producer
+  namespace: nyc-taxi
+spec: 
+  backoffLimit: 1
+  template:
+    metadata:
+      labels: 
+        app: nyc-taxi-historical-producer
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox:latest
+          command: 
+            - sh
+            - -c
+            - |
+              until nc -z my-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local 9092; do
+                echo "Waiting for Kafka to be ready..."
+                sleep 5
+              done
+      containers: 
+        - name: producer
+          image: nyc-taxi-producer:latest
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: nyc-taxi-producer-config
+          env:
+            - name: MODE
+              value: "historical"
+            - name: YEAR
+              value: "2024"
+            - name: DATA_DIR
+              value: "/data"
+          volumeMounts:
+            - name: taxi-data
+              mountPath: /data
+          resources: 
+            requests:
+              memory: "512Mi"
+              cpu: "256m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+      volumes:
+        - name: taxi-data
+          hostPath:
+            path: /home/viet6cltt/Dev/Subjects/BigData/NYCTaxis/producer/data
+            type: Directory

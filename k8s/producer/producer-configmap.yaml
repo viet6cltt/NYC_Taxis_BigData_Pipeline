@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: producer-config
+  name: nyc-taxi-producer-config
   namespace: nyc-taxi
 data:
   KAFKA_TOPIC: "nyc_taxi_events"
