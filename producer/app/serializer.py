@@ -1,22 +1,26 @@
+from decimal import Decimal
 import uuid
-from datetime import datetime, timezone 
+from datetime import date, datetime, timezone 
 
 import pandas as pd 
 
 def to_json_safe(value):
-    if pd.isna(value):
+    # PyArrow to_pylist() trả về None cho null
+    if value is None:
         return None
     
-    if isinstance(value, pd.Timestamp):
-        # parquet timestamp -> ISO string
+    # Handle datetime (PyArrow return datetime)
+    if isinstance(value, datetime):
         return value.isoformat()
     
-
+    if isinstance(value, date):
+        return value.isoformat()
+    
+    if isinstance(value, Decimal):
+        return float(value)
+    
     if hasattr(value, "item"):
-        try:
-            return value.item()
-        except Exception:
-            pass
+        return value.item()
 
     return value 
 
@@ -25,7 +29,13 @@ def build_event(row_dict: dict, ingest_mode: str, source_file: str) -> dict:
     
     # Get time 
     pickup_time = clean.get("tpep_pickup_datetime")
-    trip_date = pickup_time[:10] if pickup_time else None
+    
+    if pickup_time is None:
+        trip_date = None
+    else:
+        pickup_time_str = str(pickup_time)
+        trip_date = pickup_time_str[:10] if pickup_time_str else None
+        
     event = {
         "metadata": {
             "event_id": str(uuid.uuid4()),
@@ -34,7 +44,7 @@ def build_event(row_dict: dict, ingest_mode: str, source_file: str) -> dict:
             "source_file": source_file,
             "ingest_mode": ingest_mode,
             "ingest_timestamp": datetime.now(timezone.utc).isoformat(),
-            "event_time": clean.get("tpep_pickup_datetime"),
+            "event_time": pickup_time,
             "trip_date": trip_date 
         },
         "payload": clean

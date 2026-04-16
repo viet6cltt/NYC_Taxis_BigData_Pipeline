@@ -10,7 +10,7 @@ def build_producer() -> KafkaProducer:
         # batching
         linger_ms=100,
         batch_size=64*1024,
-        compression_type='snappy',
+        compression_type='gzip',
         
         # performance / stability
         buffer_memory=64*1024*1024,

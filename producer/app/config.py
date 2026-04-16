@@ -4,7 +4,7 @@ TOPIC = os.getenv("KAFKA_TOPIC", "nyc-taxi-events")
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "my-kafka-cluster-kafka-bootstrap.kafka:9092")
 MODE = os.getenv("MODE", "historical")  # "historical" or "streaming"
 
-DATA_DIR = os.getenv("DATA_DIR", "/data")
+DATA_DIR = os.getenv("DATA_DIR", "/data/yellow_data")
 YEAR = os.getenv("YEAR", "2024")
 
 # Historical
