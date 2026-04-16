@@ -1,0 +1,12 @@
+cramjam==2.11.0
+fastparquet==2026.3.0
+fsspec==2026.3.0
+kafka-python==2.3.1
+numpy==2.4.4
+packaging==26.1
+pandas==3.0.2
+py4j==0.10.9.9
+pyarrow==23.0.1
+pyspark==4.1.1
+python-dateutil==2.9.0.post0
+six==1.17.0
