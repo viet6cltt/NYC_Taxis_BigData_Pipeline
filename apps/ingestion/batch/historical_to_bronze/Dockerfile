@@ -1,22 +1,21 @@
-FROM python:3.11-slim
+FROM apache/spark:4.0.2-scala2.13-java17-python3-r-ubuntu
 
-WORKDIR /app
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+USER root 
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-COPY common/ /app/common/
+WORKDIR /opt/spark/work-dir
 
-COPY batch/historical_to_bronze/app/ /app/app/
-COPY batch/historical_to_bronze/requirements.txt .
+# Copy Spark JAR files to the appropriate directory
+COPY ./spark_jars /opt/spark/jars/
 
-RUN pip install --no-cache-dir -r requirements.txt
+# 4. Tổ chức lại code: Đưa cả 'app' và 'common' vào cùng một gốc
+# Cấu trúc sau khi copy:
+# /opt/spark/work-dir/app/main.py
+# /opt/spark/work-dir/common/bronze_mapper.py
+COPY common/ ./common/
+COPY batch/historical_to_bronze/app/ ./app/
 
-ENV PYTHONPATH=/app
-
-CMD ["python", "app/main.py"]
+RUN chmod 644 /opt/spark/jars/*.jar

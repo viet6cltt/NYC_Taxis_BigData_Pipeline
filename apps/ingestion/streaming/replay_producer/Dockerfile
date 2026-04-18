@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
 COPY common/ /app/common/
 
 COPY streaming/replay_producer/app/ /app/app/

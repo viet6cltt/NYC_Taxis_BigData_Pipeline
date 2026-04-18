@@ -8,3 +8,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+apps/ingestion/spark_jars/*
+
+.codex

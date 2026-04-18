@@ -11,6 +11,7 @@ from config import (
     DATA_DIR,
     YEAR
 )
+from common.constants import INGEST_MODE_STREAMING
 
 from datetime import datetime
 import time
@@ -164,7 +165,7 @@ def run_streaming():
                 event = serializer.serialize(
                     build_trip_event(
                         row,
-                        ingest_mode="streaming",
+                        ingest_mode=INGEST_MODE_STREAMING,
                         source_file=source_file,
                     )
                 )
