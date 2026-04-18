@@ -2,6 +2,8 @@ learning.py
 
 data/*
 
+apps/ingestion/streaming/replay_producer/venv/*
+
 __pycache__/
 *.pyc
 *.pyo
