@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyc-taxi-streaming
+  namespace: nyc-taxi
+spec:
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: nyc-taxi-streaming
+  template:
+    metadata:
+      labels: 
+        app: nyc-taxi-streaming
+    spec:
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox:latest
+          command: 
+            - sh
+            - -c
+            - |
+              until nc -z my-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local 9092; do
+                echo "Waiting for Kafka to be ready..."
+                sleep 5
+              done
+      containers:
+        - name: producer
+          image: nyc-taxi-producer:latest
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: nyc-taxi-ingestion-config
+          env:
+            - name: DATA_DIR
+              value: "/data/yellow_data"
+            - name: YEAR
+              value: "2025"
+            - name: LOOP_STREAMING
+              value: "true"
+            - name: STREAMING_SPEED_MULTIPLIER
+              value: "5"
+            - name: STREAMING_BATCH_SIZE
+              value: "100"
+            - name: STREAMING_MAX_SLEEP_SECONDS
+              value: "5"
+          resources: 
+            requests:
+              memory: "512Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "400m"
+          volumeMounts:
+            - name: taxi-data
+              mountPath: /data
+      volumes:
+        - name: taxi-data
+          hostPath:
+            path: /mnt/nyc-data
+            type: Directory
