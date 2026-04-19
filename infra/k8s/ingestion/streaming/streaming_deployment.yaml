@@ -1,16 +1,18 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: nyc-taxi-historical-producer
+  name: nyc-taxi-streaming
   namespace: nyc-taxi
-spec: 
-  backoffLimit: 1
+spec:
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: nyc-taxi-streaming
   template:
     metadata:
       labels: 
-        app: nyc-taxi-historical-producer
+        app: nyc-taxi-streaming
     spec:
-      restartPolicy: Never
       initContainers:
         - name: wait-for-kafka
           image: busybox:latest
@@ -22,30 +24,36 @@ spec:
                 echo "Waiting for Kafka to be ready..."
                 sleep 5
               done
-      containers: 
+      containers:
         - name: producer
-          image: nyc-taxi-producer:latest
+          image: nyc-taxi-replay:v1
           imagePullPolicy: Never
           envFrom:
             - configMapRef:
-                name: nyc-taxi-producer-config
+                name: nyc-taxi-ingestion-config
           env:
-            - name: MODE
-              value: "historical"
-            - name: YEAR
-              value: "2024"
             - name: DATA_DIR
               value: "/data/yellow_data"
-          volumeMounts:
-            - name: taxi-data
-              mountPath: /data
+            - name: YEAR
+              value: "2025"
+            - name: LOOP_STREAMING
+              value: "true"
+            - name: STREAMING_SPEED_MULTIPLIER
+              value: "5"
+            - name: STREAMING_BATCH_SIZE
+              value: "100"
+            - name: STREAMING_MAX_SLEEP_SECONDS
+              value: "5"
           resources: 
             requests:
               memory: "1Gi"
               cpu: "256m"
             limits:
               memory: "2Gi"
-              cpu: "500m"
+              cpu: "400m"
+          volumeMounts:
+            - name: taxi-data
+              mountPath: /data
       volumes:
         - name: taxi-data
           hostPath:

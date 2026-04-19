@@ -9,9 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY common/ /app/common/
+
+COPY streaming/replay_producer/app/ /app/app/
+COPY streaming/replay_producer/requirements.txt .
+COPY streaming/schemas/ /app/schemas/
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/ /app/
+ENV PYTHONPATH=/app
 
-CMD ["python", "main.py"]
+CMD ["python", "app/main.py"]

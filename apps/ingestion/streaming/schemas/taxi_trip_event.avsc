@@ -1,0 +1,52 @@
+{
+    "type": "record",
+    "name": "TaxiTripEvent",
+    "namespace": "com.bigdata.nyctaxi",
+    "fields": [
+        {
+            "name": "metadata",
+            "type": {
+                "type": "record",
+                "name": "EventMetadata",
+                "fields": [
+                    {"name": "event_id", "type": "string"},
+                    {"name": "event_type", "type": "string"},
+                    {"name": "schema_version", "type": "string"},
+                    {"name": "source_file", "type": ["null", "string"], "default": null},
+                    {"name": "ingest_mode", "type": "string"},
+                    {"name": "ingest_timestamp", "type": "string"},
+                    {"name": "event_time", "type": ["null", "string"], "default": null},
+                    {"name": "trip_date", "type": ["null", "string"], "default": null}
+                ]
+            }
+        },
+        {
+            "name": "payload",
+            "type": {
+                "type": "record",
+                "name": "TaxiTripPayload",
+                "fields": [
+                    {"name": "VendorID", "type": ["null", "int"], "default": null},
+                    {"name": "tpep_pickup_datetime", "type": "string"}, 
+                    {"name": "tpep_dropoff_datetime", "type": "string"},
+                    {"name": "passenger_count", "type": ["null", "long"], "default": null},
+                    {"name": "trip_distance", "type": ["null", "double"], "default": null},
+                    {"name": "RatecodeID", "type": ["null", "long"], "default": null},
+                    {"name": "store_and_fwd_flag", "type": ["null", "string"], "default": null},
+                    {"name": "PULocationID", "type": ["null", "int"], "default": null},
+                    {"name": "DOLocationID", "type": ["null", "int"], "default": null},
+                    {"name": "payment_type", "type": ["null", "long"], "default": null},
+                    {"name": "fare_amount", "type": ["null", "double"], "default": null},
+                    {"name": "extra", "type": ["null", "double"], "default": null},
+                    {"name": "mta_tax", "type": ["null", "double"], "default": null},
+                    {"name": "tip_amount", "type": ["null", "double"], "default": null},
+                    {"name": "tolls_amount", "type": ["null", "double"], "default": null},
+                    {"name": "improvement_surcharge", "type": ["null", "double"], "default": null},
+                    {"name": "total_amount", "type": ["null", "double"], "default": null},
+                    {"name": "congestion_surcharge", "type": ["null", "double"], "default": null},
+                    {"name": "Airport_fee", "type": ["null", "double"], "default": null}
+                ]
+            }
+        }
+    ]
+}

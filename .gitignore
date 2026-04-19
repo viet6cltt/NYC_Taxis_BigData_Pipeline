@@ -1,10 +1,14 @@
 learning.py
-producer/data/*
-producer/venv311/*
 
 data/*
+
+apps/ingestion/streaming/replay_producer/venv/*
 
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+apps/ingestion/spark_jars/*
+
+.codex
