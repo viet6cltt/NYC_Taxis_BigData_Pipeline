@@ -26,7 +26,7 @@ spec:
               done
       containers:
         - name: producer
-          image: nyc-taxi-producer:latest
+          image: nyc-taxi-replay:v1
           imagePullPolicy: Never
           envFrom:
             - configMapRef:
@@ -46,10 +46,10 @@ spec:
               value: "5"
           resources: 
             requests:
-              memory: "512Mi"
-              cpu: "100m"
-            limits:
               memory: "1Gi"
+              cpu: "256m"
+            limits:
+              memory: "2Gi"
               cpu: "400m"
           volumeMounts:
             - name: taxi-data

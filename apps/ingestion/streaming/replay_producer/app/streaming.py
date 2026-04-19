@@ -2,7 +2,7 @@ from app.kafka_producer import KafkaProducer
 from app.avro_serializer import AvroSerializer
 from app.event_builder import build_trip_event
 from config import (
-    TOPIC,
+    KAFKA_TOPIC,
     BOOTSTRAP_SERVERS,
     STREAMING_SPEED_MULTIPLIER,
     STREAMING_BATCH_SIZE,
@@ -114,14 +114,13 @@ def run_streaming():
     
     # Init Kafka Producer 
     producer = KafkaProducer(
-        bootstrap_servers=BOOTSTRAP_SERVERS,
-        topic=TOPIC
+        bootstrap_servers=BOOTSTRAP_SERVERS
     )
     
     expected_year = int(YEAR)
     print(
         f"[streaming] Start replay year={YEAR}, files={len(files)}, "
-        f"topic={TOPIC}, speed_multiplier={STREAMING_SPEED_MULTIPLIER}, "
+        f"topic={KAFKA_TOPIC}, speed_multiplier={STREAMING_SPEED_MULTIPLIER}, "
         f"flush_every={STREAMING_BATCH_SIZE}"
     )
     
@@ -170,7 +169,7 @@ def run_streaming():
                     )
                 )
 
-                producer.send(TOPIC, value=event)
+                producer.send(KAFKA_TOPIC, value=event)
                 sent += 1
                 buffered += 1
 

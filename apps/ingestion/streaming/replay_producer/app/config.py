@@ -1,6 +1,6 @@
 import os 
 
-TOPIC = os.getenv("KAFKA_TOPIC", "nyc-taxi-events")
+KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "nyc-taxi-events")
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "my-kafka-cluster-kafka-bootstrap.kafka:9092")
 
 DATA_DIR = os.getenv("DATA_DIR", "/data/yellow_data")
