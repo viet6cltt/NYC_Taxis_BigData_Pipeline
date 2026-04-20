@@ -11,11 +11,6 @@ WORKDIR /opt/spark/work-dir
 # Copy Spark JAR files to the appropriate directory
 COPY ./spark_jars /opt/spark/jars/
 
-# 4. Tổ chức lại code: Đưa cả 'app' và 'common' vào cùng một gốc
-# Cấu trúc sau khi copy:
-# /opt/spark/work-dir/app/main.py
-# /opt/spark/work-dir/common/bronze_mapper.py
-COPY ./ingestion/common/ ./common/
-COPY ./ingestion/batch/historical_to_bronze/app/ ./app/
+COPY ./processing/bronze_to_silver/app/ ./app/
 
 RUN chmod 644 /opt/spark/jars/*.jar

@@ -79,7 +79,7 @@ def main():
         .outputMode("append")
         .option("path", OUTPUT_PATH)
         .option("checkpointLocation", CHECKPOINT_LOCATION)
-        .trigger(processingTime="10 seconds")
+        .trigger(processingTime="30 seconds")
         .start()
     )
 

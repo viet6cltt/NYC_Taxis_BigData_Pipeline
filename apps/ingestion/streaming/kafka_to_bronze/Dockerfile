@@ -24,8 +24,8 @@ ADD https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/2.12.0/commo
 # /opt/spark/work-dir/app/
 # /opt/spark/work-dir/schemas/
 # /opt/spark/work-dir/common/
-COPY common/ ./common/
-COPY streaming/kafka_to_bronze/app/ ./app/
-COPY streaming/schemas/ ./schemas/
+COPY ./ingestion/common/ ./common/
+COPY ./ingestion/streaming/kafka_to_bronze/app/ ./app/
+COPY ./ingestion/streaming/schemas/ ./schemas/
 
 RUN chmod 644 /opt/spark/jars/*.jar
