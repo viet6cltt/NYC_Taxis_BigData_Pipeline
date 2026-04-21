@@ -13,3 +13,5 @@ MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 TRIGGER_INTERVAL = os.getenv("TRIGGER_INTERVAL", "30 seconds")
 WATERMARK_DELAY = os.getenv("WATERMARK_DELAY", "1 minute")
 
+PIPELINE_MODE = os.getenv("PIPELINE_MODE", "streaming")  # or "batch"
+STARTING_VERSION = os.getenv("STARTING_VERSION")

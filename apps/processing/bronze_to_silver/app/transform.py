@@ -13,8 +13,16 @@ def add_payment_type_desc(df: DataFrame) -> DataFrame:
         .when(col("payment_type") == 6, "voided_trip")
         .otherwise("other")
     )
+    
+def opt_transform_for_streaming(df: DataFrame) -> DataFrame:
+    df = (
+        df
+        .withWatermark("event_time", WATERMARK_DELAY)
+        .dropDuplicates(["event_id"])
+    )
+    return df
 
-def transform(bronze_df: DataFrame) -> DataFrame:
+def transform(bronze_df: DataFrame, pipeline_mode: str) -> DataFrame:
     df = (
         bronze_df
         .withColumn("trip_hour", hour(col("pickup_datetime")))
@@ -31,12 +39,9 @@ def transform(bronze_df: DataFrame) -> DataFrame:
     df = add_payment_type_desc(df)
     
     # Watermark + dedup 
-    df = (
-        df
-        .withWatermark("event_time", WATERMARK_DELAY)
-        .dropDuplicates(["event_id"])
-    )
-    
+    if pipeline_mode == "streaming":
+        df = opt_transform_for_streaming(df)
+
     # Data quality check
     df = df.filter(col("event_id").isNotNull())
     df = df.filter(col("pickup_datetime").isNotNull())
@@ -58,7 +63,7 @@ def transform(bronze_df: DataFrame) -> DataFrame:
     
     # passenger count logic
     df = df.filter(
-        col("passenger_count").isNotNull() |
+        col("passenger_count").isNotNull() &
         ((col("passenger_count") > 0) & (col("passenger_count") < 10))
     )
     
