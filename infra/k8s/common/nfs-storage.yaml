@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-nyc-taxi-pv
+spec:
+  capacity:
+    storage: 20Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany # Quan trọng: Cho phép nhiều máy cùng đọc/ghi
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    path: /data/nyc-taxi-data # Đường dẫn trên Fedora
+    server: 100.76.120.58    # IP Tailscale của Fedora
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-nyc-taxi-pvc
+  namespace: spark-operator
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 20Gi
+  volumeName: nfs-nyc-taxi-pv

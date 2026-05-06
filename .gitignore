@@ -12,3 +12,6 @@ __pycache__/
 apps/spark_jars/*
 
 .codex
+learning.md
+
+.env

@@ -5,3 +5,12 @@ metadata:
   labels:
     name: spark-operator
     env: development
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nyc-taxi
+  labels:
+    name: nyc-taxi
+    env: development

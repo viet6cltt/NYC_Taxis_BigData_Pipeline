@@ -5,35 +5,30 @@ metadata:
 
 ---
 apiVersion: v1
-kind: Pod
+kind: Secret
 metadata:
   name: minio
   namespace: minio
-  labels:
-    app: minio-server 
+type: Opaque
+stringData:
+  MINIO_ROOT_USER: "minioadmin"
+  MINIO_ROOT_PASSWORD: "minioadmin"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-headless
+  namespace: minio
 spec:
-  containers:
-  - name: minio
-    image: minio/minio:latest
-    args: 
-      - server
-      - /data
-      - --console-address 
-      - :9001
-    ports:
-      - containerPort: 9000
-      - containerPort: 9001
-    env:
-      - name: MINIO_ROOT_USER
-        value: "minioadmin"
-      - name: MINIO_ROOT_PASSWORD
-        value: "minioadmin"
-    volumeMounts:
-      - name: minio-data
-        mountPath: /data
-  volumes:
-    - name: minio-data
-      emptyDir: {}  
+  clusterIP: None
+  selector:
+    app: minio-server
+    app.kubernetes.io/name: minio
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
 
 ---
 apiVersion: v1
@@ -44,10 +39,41 @@ metadata:
 spec:
   selector:
     app: minio-server
+    app.kubernetes.io/name: minio
   ports:
     - protocol: TCP
       port: 9000
       targetPort: 9000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-api-nodeport
+  namespace: minio
+spec:
+  type: NodePort # Thay đổi từ ClusterIP sang NodePort
+  ports:
+    - port: 9000
+      targetPort: 9000
+      nodePort: 30000 # Chọn một cổng cố định từ 30000-32767
+  selector:
+    app: minio-server # Đảm bảo label này khớp với Pod MinIO
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-ui-nodeport
+  namespace: minio
+spec:
+  type: NodePort # Thay đổi từ ClusterIP sang NodePort
+  ports:
+    - port: 9001
+      targetPort: 9001
+      nodePort: 30001 # Chọn một cổng cố định từ 30000-32767
+  selector:
+    app: minio-server # Đảm bảo label này khớp với Pod MinIO
 
 ---
 apiVersion: v1
@@ -58,7 +84,70 @@ metadata:
 spec:
   selector:
     app: minio-server
+    app.kubernetes.io/name: minio
   ports:
     - protocol: TCP
       port: 9001
-      targetPort: 9001  
+      targetPort: 9001
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  serviceName: minio-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio-server
+      app.kubernetes.io/name: minio
+  template:
+    metadata:
+      labels:
+        app: minio-server
+        app.kubernetes.io/name: minio
+    spec:
+      nodeSelector: 
+        role: storage
+      containers:
+        - name: minio
+          image: minio/minio:latest
+          args: 
+            - server
+            - /data
+            - --console-address 
+            - :9001
+          ports:
+            - name: api
+              containerPort: 9000
+            - name: console
+              containerPort: 9001
+          envFrom:
+            - secretRef:
+                name: minio
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: minio-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: minio-server
+      app.kubernetes.io/name: minio

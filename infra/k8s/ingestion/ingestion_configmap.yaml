@@ -1,10 +1,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nyc-taxi-ingestion-config
+  name: nyc-taxi-runtime-config
   namespace: nyc-taxi
 data:
   KAFKA_TOPIC: "nyc-taxi-events"
   KAFKA_BOOTSTRAP_SERVERS: "my-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
-  DATA_DIR: "/data"
-  
+  MINIO_ENDPOINT: "http://minio-api.minio.svc.cluster.local:9000"
+  RAW_PATH: "s3a://lakehouse/raw/yellow_data"
+  BRONZE_PATH: "s3a://lakehouse/bronze/nyc-taxi"
+  SILVER_PATH: "s3a://lakehouse/silver/nyc-taxi/trips"
+  CHECKPOINT_LOCATION: "s3a://lakehouse/bronze/_checkpoints/nyc_taxi_stream"
