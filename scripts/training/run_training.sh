@@ -17,14 +17,17 @@ NAMESPACE="spark-operator"
 SERVICE_ACCOUNT="spark-user"
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-train-xgboost:v1.0"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
+GOLD_FEATURES_PATH="${GOLD_FEATURES_PATH:-s3a://lakehouse/gold/nyc-taxi/features}"
 
 MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.cluster.local:9000}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://mlflow.mlflow.svc.cluster.local:5000}"
+XGB_NUM_WORKERS="${XGB_NUM_WORKERS:-2}"
 
 echo "--- Submitting XGBoost Training job to Kubernetes ---"
 echo "    MLflow Tracking URI: $MLFLOW_TRACKING_URI"
+echo "    XGBoost Spark workers: $XGB_NUM_WORKERS"
 
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
@@ -32,8 +35,10 @@ echo "    MLflow Tracking URI: $MLFLOW_TRACKING_URI"
     --name nyc-taxi-train-xgboost \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
     --conf spark.kubernetes.container.image="$IMAGE" \
-    --conf spark.kubernetes.container.image.pullPolicy=IfNotPresent \
+    --conf spark.kubernetes.container.image.pullPolicy=Always \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
+    --conf spark.kubernetes.authenticate.caCertFile="" \
+    --conf spark.kubernetes.authenticate.submission.caCertFile="" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
@@ -42,6 +47,8 @@ echo "    MLflow Tracking URI: $MLFLOW_TRACKING_URI"
     --conf spark.kubernetes.driverEnv.MINIO_ENDPOINT="$MINIO_INTERNAL_ENDPOINT" \
     --conf spark.kubernetes.driverEnv.MINIO_ACCESS_KEY="$MINIO_ACCESS_KEY" \
     --conf spark.kubernetes.driverEnv.MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \
+    --conf spark.kubernetes.driverEnv.GOLD_FEATURES_PATH="$GOLD_FEATURES_PATH" \
+    --conf spark.kubernetes.driverEnv.XGB_NUM_WORKERS="$XGB_NUM_WORKERS" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
     --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
     \
@@ -53,7 +60,7 @@ echo "    MLflow Tracking URI: $MLFLOW_TRACKING_URI"
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     \
     --conf spark.driver.memory=4g \
-    --conf spark.executor.instances=1 \
+    --conf spark.executor.instances=2 \
     --conf spark.executor.memory=4g \
     \
     "$APP_FILE"

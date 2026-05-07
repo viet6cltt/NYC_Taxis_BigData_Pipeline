@@ -6,8 +6,8 @@ MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 
 # Paths
-SILVER_PATH = os.getenv("SILVER_PATH", "s3a://silver/trips/")
-GOLD_FEATURES_PATH = os.getenv("GOLD_FEATURES_PATH", "s3a://gold/features/")
+SILVER_PATH = os.getenv("SILVER_PATH", "s3a://lakehouse/silver/nyc-taxi/trips")
+GOLD_FEATURES_PATH = os.getenv("GOLD_FEATURES_PATH", "s3a://lakehouse/gold/nyc-taxi/features")
 
 # KMeans clusters (pre-defined based on notebook analysis)
 N_LOCATION_CLUSTERS = int(os.getenv("N_LOCATION_CLUSTERS", "5"))

@@ -247,14 +247,15 @@ def step3_feature_engineering(spark):
 # STEP 4 — Train XGBoost + Log to MLflow
 # ==========================================================================
 def step4_train_xgboost(spark):
-    import numpy as np
+    import os
+    import pandas as pd
     import mlflow
     import mlflow.xgboost
-    import xgboost as xgb
     from mlflow.models.signature import infer_signature
-    from sklearn.model_selection import train_test_split
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+    from pyspark.ml.evaluation import RegressionEvaluator
+    from pyspark.ml.feature import VectorAssembler
+    from pyspark.sql.functions import col, isnan, lit, when
+    from xgboost.spark import SparkXGBRegressor
 
     print("\n" + "="*60)
     print("STEP 4: Train XGBoost → MLflow")
@@ -267,19 +268,41 @@ def step4_train_xgboost(spark):
         "distance_manhattan","location_cluster","temporal_cluster",
     ]
     TARGET_COL = "fare_amount"
+    FEATURES_COL = "features"
+    PREDICTION_COL = "prediction"
 
-    gold_df = spark.read.format("delta").load(GOLD_PATH).select(*FEATURE_COLS, TARGET_COL).dropna()
-    # Sample 10% of 41M rows (~4M rows) to avoid OOM on single machine pandas conversion
-    pdf = gold_df.sample(fraction=0.1, seed=42).toPandas()
-    print(f"  Gold rows (sampled): {len(pdf):,}")
+    gold_df = spark.read.format("delta").load(GOLD_PATH).select(*FEATURE_COLS, TARGET_COL)
+    gold_df = gold_df.dropna(subset=[TARGET_COL])
+    for name in FEATURE_COLS + [TARGET_COL]:
+        value = col(name).cast("double")
+        gold_df = gold_df.withColumn(
+            name,
+            when(
+                value.isNull()
+                | isnan(value)
+                | (value == lit(float("inf")))
+                | (value == lit(float("-inf"))),
+                lit(0.0),
+            ).otherwise(value),
+        )
 
-    X = pdf[FEATURE_COLS].fillna(0).replace([float("inf"), float("-inf")], 0)
-    y = pdf[TARGET_COL]
+    assembler = VectorAssembler(
+        inputCols=FEATURE_COLS,
+        outputCol=FEATURES_COL,
+        handleInvalid="keep",
+    )
+    dataset = assembler.transform(gold_df).select(FEATURES_COL, TARGET_COL).cache()
+    train_df, test_df = dataset.randomSplit([0.8, 0.2], seed=42)
+    train_df = train_df.cache()
+    test_df = test_df.cache()
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    scaler = StandardScaler()
-    Xs_train = scaler.fit_transform(X_train)
-    Xs_test  = scaler.transform(X_test)
+    train_size = train_df.count()
+    test_size = test_df.count()
+    default_workers = max(1, min(spark.sparkContext.defaultParallelism, 4))
+    num_workers = int(os.getenv("XGB_NUM_WORKERS", str(default_workers)))
+    print(f"  Gold train rows: {train_size:,}")
+    print(f"  Gold test rows:  {test_size:,}")
+    print(f"  XGBoost Spark workers: {num_workers}")
 
     mlflow.set_tracking_uri(MLFLOW_URI)
     mlflow.set_experiment("NYC_Taxi_Fare_Prediction")
@@ -287,29 +310,50 @@ def step4_train_xgboost(spark):
     with mlflow.start_run(run_name="XGBoost_local") as run:
         xgb_params = dict(n_estimators=100, max_depth=6, learning_rate=0.1,
                           subsample=0.8, colsample_bytree=0.8,
-                          random_state=42, n_jobs=-1, eval_metric="rmse")
+                          random_state=42, eval_metric="rmse",
+                          objective="reg:squarederror")
         mlflow.log_params(xgb_params)
+        mlflow.log_param("num_workers", num_workers)
+        mlflow.log_param("scaler", "none")
 
-        model = xgb.XGBRegressor(**xgb_params)
-        model.fit(Xs_train, y_train, eval_set=[(Xs_test, y_test)], verbose=False)
+        estimator = SparkXGBRegressor(
+            features_col=FEATURES_COL,
+            label_col=TARGET_COL,
+            prediction_col=PREDICTION_COL,
+            num_workers=num_workers,
+            **xgb_params,
+        )
+        spark_model = estimator.fit(train_df)
+        model = getattr(spark_model, "_xgb_sklearn_model", None)
+        if model is None:
+            raise RuntimeError("SparkXGBRegressorModel does not expose _xgb_sklearn_model")
 
-        y_pred_test  = model.predict(Xs_test)
-        y_pred_train = model.predict(Xs_train)
-
-        test_r2   = float(r2_score(y_test,  y_pred_test))
-        test_rmse = float(np.sqrt(mean_squared_error(y_test, y_pred_test)))
-        test_mae  = float(mean_absolute_error(y_test, y_pred_test))
-        train_r2  = float(r2_score(y_train, y_pred_train))
+        evaluator = RegressionEvaluator(labelCol=TARGET_COL, predictionCol=PREDICTION_COL)
+        train_predictions = spark_model.transform(train_df)
+        test_predictions = spark_model.transform(test_df)
+        train_r2 = float(evaluator.setMetricName("r2").evaluate(train_predictions))
+        test_r2 = float(evaluator.setMetricName("r2").evaluate(test_predictions))
+        test_rmse = float(evaluator.setMetricName("rmse").evaluate(test_predictions))
+        test_mae = float(evaluator.setMetricName("mae").evaluate(test_predictions))
 
         mlflow.log_metric("train_r2",  train_r2)
         mlflow.log_metric("test_r2",   test_r2)
         mlflow.log_metric("test_rmse", test_rmse)
         mlflow.log_metric("test_mae",  test_mae)
 
-        sig = infer_signature(Xs_train, y_pred_train)
+        input_example = gold_df.select(*FEATURE_COLS).limit(100).toPandas()
+        sig = infer_signature(input_example, model.predict(input_example))
         mlflow.xgboost.log_model(model, artifact_path="model",
                                  signature=sig,
                                  registered_model_name="XGB_NYC_Fare")
+
+        importance_df = pd.DataFrame({
+            "feature": FEATURE_COLS,
+            "importance": model.feature_importances_,
+        }).sort_values("importance", ascending=False)
+        imp_path = "/tmp/xgb_feature_importance_local.csv"
+        importance_df.to_csv(imp_path, index=False)
+        mlflow.log_artifact(imp_path, artifact_path="feature_importance")
 
         print(f"  Train R²:  {train_r2:.4f}")
         print(f"  Test  R²:  {test_r2:.4f}")
@@ -325,6 +369,10 @@ def step4_train_xgboost(spark):
         client.set_registered_model_alias("XGB_NYC_Fare", "production", latest.version)
         print(f"  ✅ Model v{latest.version} → alias 'production'")
 
+    train_df.unpersist()
+    test_df.unpersist()
+    dataset.unpersist()
+
     return test_r2
 
 
@@ -336,6 +384,8 @@ if __name__ == "__main__":
     print("=" * 60)
     spark = build_spark("NYC-Taxi-FullPipeline")
     try:
+        step2_bronze_to_silver(spark)
+        step3_feature_engineering(spark)
         step4_train_xgboost(spark)
         print("\n" + "=" * 60)
         print("✅ ALL STEPS COMPLETE!")

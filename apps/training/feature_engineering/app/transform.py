@@ -16,7 +16,7 @@ import pandas as pd
 
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import (
-    col, hour, dayofweek, sin, cos, lit, when, abs as spark_abs,
+    col, hour, dayofweek, sin, cos, lit, unix_timestamp, when, abs as spark_abs,
     pandas_udf
 )
 from pyspark.sql.types import IntegerType
@@ -120,9 +120,12 @@ def add_location_cluster(df: DataFrame, n_clusters: int = N_LOCATION_CLUSTERS) -
             pdf["location_cluster"] = km.predict(sc_.transform(X)).astype(int)
             yield pdf
 
-    from pyspark.sql.types import StructType, StructField, IntegerType as IT
-    # Add output column schema
-    out_schema = df.schema.add("location_cluster", IT(), True)
+    from pyspark.sql.types import StructType, StructField, IntegerType
+
+    out_schema = StructType(df.schema.fields + [
+        StructField("location_cluster", IntegerType(), True)
+    ])
+
     return df.mapInPandas(_predict, schema=out_schema)
 
 
@@ -160,8 +163,12 @@ def add_temporal_cluster(df: DataFrame, n_clusters: int = N_TEMPORAL_CLUSTERS) -
             pdf["temporal_cluster"] = km.predict(sc_.transform(X)).astype(int)
             yield pdf
 
-    from pyspark.sql.types import IntegerType as IT
-    out_schema = df.schema.add("temporal_cluster", IT(), True)
+    from pyspark.sql.types import StructType, StructField, IntegerType
+
+    out_schema = StructType(df.schema.fields + [
+        StructField("temporal_cluster", IntegerType(), True)
+    ])
+    
     return df.mapInPandas(_predict, schema=out_schema)
 
 
@@ -199,6 +206,14 @@ GOLD_FEATURE_COLS = [
 def transform(silver_df: DataFrame) -> DataFrame:
     """Full feature engineering pipeline Silver → Gold."""
     df = silver_df
+    
+    # HOTFIX: recreate column if missing in Silver, we will delete it after run again bronze_to_silver with the new logic
+    if "trip_duration_seconds" not in df.columns:
+        df = df.withColumn(
+            "trip_duration_seconds",
+            unix_timestamp(col("dropoff_datetime")) -
+            unix_timestamp(col("pickup_datetime"))
+        )
 
     # Drop rows without target or key fields
     df = df.filter(col("fare_amount").isNotNull() & (col("fare_amount") > 0))

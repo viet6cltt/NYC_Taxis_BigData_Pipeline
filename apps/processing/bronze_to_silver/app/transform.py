@@ -93,6 +93,8 @@ def transform(bronze_df: DataFrame, pipeline_mode: str) -> DataFrame:
 
         col("payment_type"),
         col("payment_type_desc"),
+        
+        col("trip_duration_seconds"),
 
         col("fare_amount"),
         col("extra"),

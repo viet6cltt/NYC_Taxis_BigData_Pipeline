@@ -1,13 +1,22 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+ENV_FILE="${REPO_ROOT}/.env"
+
+if [ -f "$ENV_FILE" ]; then
+    source "$ENV_FILE"
+fi
+
 SPARK_VERSION="4.1.1"
 SPARK_DIR="$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3"
 SPARK_TGZ="${SPARK_DIR}.tgz"
 SPARK_URL="https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz"
 
 # Kubernetes
-K8S_MASTER="k8s://192.168.58.2:8443"
+K8S_API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+K8S_MASTER="k8s://${K8S_API_SERVER}"
 NAMESPACE="spark-operator"
 SERVICE_ACCOUNT="spark-user"
 
@@ -22,7 +31,7 @@ PIPELINE_MODE="batch"
 STARTING_VERSION="1"
 
 # Image
-IMAGE="nyc-taxi-silver-consumer:v1"
+IMAGE="nyc-taxi-silver-consumer:v1.0"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
 
 # MinIO / Delta
@@ -52,9 +61,12 @@ run_batch() {
     --deploy-mode cluster \
     --name nyc-taxi-bronze-to-silver \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
-    --conf spark.kubernetes.container.image="$IMAGE" \
-    --conf spark.kubernetes.container.image.pullPolicy=Never \
+    --conf spark.kubernetes.container.image="${REGISTRY}/${IMAGE}" \
+    --conf spark.kubernetes.container.image.pullPolicy=IfNotPresent \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
+    --conf spark.kubernetes.authenticate.caCertFile="" \
+    --conf spark.kubernetes.authenticate.submission.caCertFile="" \
+    --conf spark.kubernetes.authenticate.trustServerCertificate=true \
     \
     --conf spark.kubernetes.driverEnv.BRONZE_PATH="$BRONZE_PATH" \
     --conf spark.kubernetes.driverEnv.SILVER_PATH="$SILVER_PATH" \
@@ -63,10 +75,10 @@ run_batch() {
     --conf spark.kubernetes.driverEnv.WATERMARK_DELAY="$WATERMARK_DELAY" \
     --conf spark.kubernetes.driverEnv.PIPELINE_MODE="$PIPELINE_MODE" \
     \
-    --conf spark.kubernetes.driver.volumes.hostPath.data-vol.mount.path=/data \
-    --conf spark.kubernetes.driver.volumes.hostPath.data-vol.options.path=/mnt/nyc-data \
-    --conf spark.kubernetes.executor.volumes.hostPath.data-vol.mount.path=/data \
-    --conf spark.kubernetes.executor.volumes.hostPath.data-vol.options.path=/mnt/nyc-data \
+    --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.mount.path=/data \
+    --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.options.claimName=nfs-nyc-taxi-pvc \
+    --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.mount.path=/data \
+    --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.options.claimName=nfs-nyc-taxi-pvc \
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.executorEnv.PYTHONPATH="/opt/spark/work-dir" \
@@ -109,7 +121,7 @@ run_streaming() {
     --name nyc-taxi-bronze-to-silver \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
     --conf spark.kubernetes.container.image="$IMAGE" \
-    --conf spark.kubernetes.container.image.pullPolicy=Never \
+    --conf spark.kubernetes.container.image.pullPolicy=IfNotPresent \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
     \
     --conf spark.kubernetes.driverEnv.BRONZE_PATH="$BRONZE_PATH" \
