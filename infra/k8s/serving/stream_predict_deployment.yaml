@@ -1,0 +1,50 @@
+---
+# Spark Streaming Inference — submitted via spark-submit, not a plain Deployment.
+# This manifest is used for reference / manual restart only.
+# Normally launched via scripts/serving/run_stream_predict.sh
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyc-taxi-stream-predict
+  namespace: spark-operator
+  labels:
+    app: nyc-taxi-stream-predict
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nyc-taxi-stream-predict
+  template:
+    metadata:
+      labels:
+        app: nyc-taxi-stream-predict
+    spec:
+      serviceAccountName: spark-user
+      containers:
+        - name: stream-predict
+          image: nyc-taxi-stream-predict:v1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow.mlflow.svc.cluster.local:5000"
+            - name: MINIO_ENDPOINT
+              value: "http://minio-api.minio.svc.cluster.local:9000"
+            - name: MINIO_ACCESS_KEY
+              value: "minioadmin"
+            - name: MINIO_SECRET_KEY
+              value: "minioadmin"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local:9092"
+            - name: KAFKA_TOPIC
+              value: "nyc-taxi-trips"
+            - name: GOLD_PREDICTIONS_PATH
+              value: "s3a://gold/predictions/"
+            - name: CHECKPOINT_LOCATION
+              value: "s3a://gold/checkpoints/stream_predict/"
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2"

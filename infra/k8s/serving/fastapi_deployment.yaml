@@ -1,0 +1,73 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyc-taxi-fastapi
+  namespace: spark-operator
+  labels:
+    app: nyc-taxi-fastapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nyc-taxi-fastapi
+  template:
+    metadata:
+      labels:
+        app: nyc-taxi-fastapi
+    spec:
+      containers:
+        - name: fastapi
+          image: nyc-taxi-fastapi:v1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow.mlflow.svc.cluster.local:5000"
+            - name: MODEL_NAME
+              value: "XGB_NYC_Fare"
+            - name: MODEL_STAGE
+              value: "Production"
+            - name: MINIO_ENDPOINT
+              value: "http://minio-api.minio.svc.cluster.local:9000"
+            - name: MINIO_ACCESS_KEY
+              value: "minioadmin"
+            - name: MINIO_SECRET_KEY
+              value: "minioadmin"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyc-taxi-fastapi
+  namespace: spark-operator
+  labels:
+    app: nyc-taxi-fastapi
+spec:
+  type: ClusterIP
+  selector:
+    app: nyc-taxi-fastapi
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

@@ -1,0 +1,94 @@
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mlflow
+
+---
+# MLflow Deployment
+# Uses MinIO as artifact store and SQLite (file-based) as backend for simplicity.
+# For production, replace SQLite with PostgreSQL.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  namespace: mlflow
+  labels:
+    app: mlflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow
+  template:
+    metadata:
+      labels:
+        app: mlflow
+    spec:
+      containers:
+        - name: mlflow
+          image: ghcr.io/mlflow/mlflow:v2.13.0
+          ports:
+            - containerPort: 5000
+          env:
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: "http://minio-api.minio.svc.cluster.local:9000"
+            - name: AWS_ACCESS_KEY_ID
+              value: "minioadmin"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "minioadmin"
+          command:
+            - mlflow
+            - server
+            - --host=0.0.0.0
+            - --port=5000
+            - --backend-store-uri=sqlite:///mlflow/mlflow.db
+            - --default-artifact-root=s3://mlflow/
+            - --serve-artifacts
+          volumeMounts:
+            - name: mlflow-storage
+              mountPath: /mlflow
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+      volumes:
+        - name: mlflow-storage
+          persistentVolumeClaim:
+            claimName: mlflow-pvc
+
+---
+# PersistentVolumeClaim for SQLite DB
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlflow-pvc
+  namespace: mlflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# ClusterIP Service (internal access from Spark jobs and FastAPI)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow
+  namespace: mlflow
+  labels:
+    app: mlflow
+spec:
+  type: ClusterIP
+  selector:
+    app: mlflow
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
