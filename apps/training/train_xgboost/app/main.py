@@ -32,8 +32,8 @@ def main() -> None:
     spark = build_spark_session()
 
     try:
-        pdf = read_gold(spark)
-        train_and_log(pdf)
+        gold_df = read_gold(spark)
+        train_and_log(gold_df)
         print("=== [train_xgboost] Done ===")
     finally:
         spark.stop()

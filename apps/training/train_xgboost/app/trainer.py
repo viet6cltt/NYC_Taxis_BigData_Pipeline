@@ -4,22 +4,21 @@ Mirrors the Kaggle notebook Sections 7, 8, 11.
 
 Steps:
   1. Train / test split
-  2. StandardScaler
-  3. Train XGBoost
-  4. Log params, metrics, scaler artifact, model to MLflow
+  2. Assemble Spark ML feature vectors
+  3. Train XGBoost with xgboost.spark
+  4. Log params, metrics, feature importance, model to MLflow
   5. Register & auto-promote to Production if R² >= threshold
 """
 
-import numpy as np
 import pandas as pd
 import mlflow
 import mlflow.xgboost
-import xgboost as xgb
 
 from mlflow.models.signature import infer_signature
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.feature import VectorAssembler
+from pyspark.sql import DataFrame
+from xgboost.spark import SparkXGBRegressor
 
 from app.config import (
     MLFLOW_TRACKING_URI,
@@ -30,21 +29,47 @@ from app.config import (
     TEST_SIZE,
     RANDOM_STATE,
     XGB_PARAMS,
+    XGB_NUM_WORKERS,
     PROMOTE_THRESHOLD_R2,
 )
 
 
-def _compute_metrics(y_true, y_pred) -> dict:
+FEATURES_COL = "features"
+PREDICTION_COL = "prediction"
+
+
+def _compute_metrics(predictions: DataFrame) -> dict:
+    evaluator = RegressionEvaluator(
+        labelCol=TARGET_COL,
+        predictionCol=PREDICTION_COL,
+    )
     return {
-        "r2":   float(r2_score(y_true, y_pred)),
-        "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
-        "mae":  float(mean_absolute_error(y_true, y_pred)),
+        "r2": float(evaluator.setMetricName("r2").evaluate(predictions)),
+        "rmse": float(evaluator.setMetricName("rmse").evaluate(predictions)),
+        "mae": float(evaluator.setMetricName("mae").evaluate(predictions)),
     }
 
 
-def train_and_log(pdf: pd.DataFrame) -> None:
+def _resolve_num_workers(df: DataFrame) -> int:
+    if XGB_NUM_WORKERS > 0:
+        return XGB_NUM_WORKERS
+    return max(1, df.sparkSession.sparkContext.defaultParallelism)
+
+
+def _get_sklearn_model(spark_model):
+    sklearn_model = getattr(spark_model, "_xgb_sklearn_model", None)
+    if sklearn_model is None:
+        raise RuntimeError(
+            "SparkXGBRegressorModel does not expose _xgb_sklearn_model. "
+            "Use mlflow.spark.log_model for this xgboost version, and update serving "
+            "to load the Spark ML model."
+        )
+    return sklearn_model
+
+
+def train_and_log(gold_df: DataFrame) -> None:
     """
-    Train XGBoost model on the full Gold dataset and log everything to MLflow.
+    Train XGBoost model on the Gold dataset and log everything to MLflow.
     Auto-promotes model to 'Production' stage if test R² ≥ threshold.
     """
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
@@ -53,18 +78,26 @@ def train_and_log(pdf: pd.DataFrame) -> None:
     # -------------------------------------------------------------------
     # 1. Prepare data
     # -------------------------------------------------------------------
-    X = pdf[FEATURE_COLS].fillna(0).replace([np.inf, -np.inf], 0)
-    y = pdf[TARGET_COL]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE
+    assembler = VectorAssembler(
+        inputCols=FEATURE_COLS,
+        outputCol=FEATURES_COL,
+        handleInvalid="keep",
     )
+    dataset = assembler.transform(gold_df).select(FEATURES_COL, TARGET_COL).cache()
 
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled  = scaler.transform(X_test)
+    train_df, test_df = dataset.randomSplit(
+        [1.0 - TEST_SIZE, TEST_SIZE],
+        seed=RANDOM_STATE,
+    )
+    train_df = train_df.cache()
+    test_df = test_df.cache()
 
-    print(f"[train_xgboost] Train: {X_train.shape[0]:,}  Test: {X_test.shape[0]:,}")
+    train_size = train_df.count()
+    test_size = test_df.count()
+    num_workers = _resolve_num_workers(gold_df)
+
+    print(f"[train_xgboost] Train: {train_size:,}  Test: {test_size:,}")
+    print(f"[train_xgboost] XGBoost Spark workers: {num_workers}")
 
     # -------------------------------------------------------------------
     # 2. MLflow run
@@ -73,26 +106,32 @@ def train_and_log(pdf: pd.DataFrame) -> None:
         # Params
         mlflow.log_param("model_type",  "XGBoost")
         mlflow.log_param("n_features",  len(FEATURE_COLS))
-        mlflow.log_param("train_size",  len(X_train))
-        mlflow.log_param("test_size",   len(X_test))
-        mlflow.log_param("scaler",      "StandardScaler")
+        mlflow.log_param("train_size",  train_size)
+        mlflow.log_param("test_size",   test_size)
+        mlflow.log_param("scaler",      "none")
+        mlflow.log_param("num_workers", num_workers)
         mlflow.log_params(XGB_PARAMS)
 
         # -------------------------------------------------------------------
         # 3. Train
         # -------------------------------------------------------------------
-        model = xgb.XGBRegressor(**XGB_PARAMS)
-        model.fit(
-            X_train_scaled, y_train,
-            eval_set=[(X_test_scaled, y_test)],
-            verbose=False,
+        estimator = SparkXGBRegressor(
+            features_col=FEATURES_COL,
+            label_col=TARGET_COL,
+            prediction_col=PREDICTION_COL,
+            num_workers=num_workers,
+            **XGB_PARAMS,
         )
+        spark_model = estimator.fit(train_df)
+        sklearn_model = _get_sklearn_model(spark_model)
 
         # -------------------------------------------------------------------
         # 4. Metrics
         # -------------------------------------------------------------------
-        train_metrics = _compute_metrics(y_train, model.predict(X_train_scaled))
-        test_metrics  = _compute_metrics(y_test,  model.predict(X_test_scaled))
+        train_predictions = spark_model.transform(train_df)
+        test_predictions = spark_model.transform(test_df)
+        train_metrics = _compute_metrics(train_predictions)
+        test_metrics = _compute_metrics(test_predictions)
 
         mlflow.log_metric("train_r2",   train_metrics["r2"])
         mlflow.log_metric("test_r2",    test_metrics["r2"])
@@ -108,7 +147,7 @@ def train_and_log(pdf: pd.DataFrame) -> None:
         # Feature importance artifact
         importance_df = pd.DataFrame({
             "feature":    FEATURE_COLS,
-            "importance": model.feature_importances_,
+            "importance": sklearn_model.feature_importances_,
         }).sort_values("importance", ascending=False)
         imp_path = "/tmp/xgb_feature_importance.csv"
         importance_df.to_csv(imp_path, index=False)
@@ -117,9 +156,10 @@ def train_and_log(pdf: pd.DataFrame) -> None:
         # -------------------------------------------------------------------
         # 5. Log model + register
         # -------------------------------------------------------------------
-        signature = infer_signature(X_train_scaled, model.predict(X_train_scaled))
+        input_example = gold_df.select(*FEATURE_COLS).limit(100).toPandas()
+        signature = infer_signature(input_example, sklearn_model.predict(input_example))
         mlflow.xgboost.log_model(
-            model,
+            sklearn_model,
             artifact_path="model",
             signature=signature,
             registered_model_name=MODEL_NAME,
@@ -127,6 +167,10 @@ def train_and_log(pdf: pd.DataFrame) -> None:
 
         run_id = run.info.run_id
         print(f"[train_xgboost] Run ID: {run_id}")
+
+    train_df.unpersist()
+    test_df.unpersist()
+    dataset.unpersist()
 
     # -------------------------------------------------------------------
     # 6. Auto-promote to Production if R² meets threshold

@@ -1,10 +1,12 @@
-FROM apache/spark-py:v3.5.3
+FROM apache/spark:4.0.2-scala2.13-java17-python3-r-ubuntu
 
 USER root
 
-COPY requirements.txt /tmp/requirements.txt
+COPY ./training/train_xgboost/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 WORKDIR /opt/spark/work-dir
 
-COPY app/ ./app/
+COPY ./spark_jars /opt/spark/jars/
+
+COPY ./training/train_xgboost/app/ ./app/
