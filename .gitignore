@@ -9,6 +9,9 @@ __pycache__/
 *.pyo
 *.pyd
 
-apps/ingestion/spark_jars/*
+apps/spark_jars/*
 
 .codex
+learning.md
+
+.env

@@ -1,12 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: spark-ui-fixed # Tên cố định của bạn
+  name: spark-ui-fixed 
   namespace: spark-operator
 spec:
+  type: NodePort
   selector:
     spark-role: driver # Spark luôn gắn nhãn này cho Pod Driver khi dùng spark-submit
   ports:
     - protocol: TCP
       port: 4040
       targetPort: 4040
+      nodePort: 30002

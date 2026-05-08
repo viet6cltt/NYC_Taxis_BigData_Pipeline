@@ -13,6 +13,8 @@ spec:
       labels:
         app: kafka-ui
     spec:
+      nodeSelector:
+        role: storage
       containers:
         - name: kafka-ui
           image: provectuslabs/kafka-ui:latest

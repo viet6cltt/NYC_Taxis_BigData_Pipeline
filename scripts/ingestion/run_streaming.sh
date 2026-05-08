@@ -7,7 +7,9 @@ SPARK_TGZ="${SPARK_DIR}.tgz"
 SPARK_URL="https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz"
 
 # Kubernetes
-K8S_MASTER="k8s://192.168.58.2:8443"
+# Dynamically get K8S_MASTER from kubectl to match kubeconfig exactly
+K8S_API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+K8S_MASTER="k8s://${K8S_API_SERVER}"
 NAMESPACE="spark-operator"
 SERVICE_ACCOUNT="spark-user"
 
@@ -48,6 +50,9 @@ echo "--- Đang submit streaming lên Kubernetes ---"
     --conf spark.kubernetes.container.image="$IMAGE" \
     --conf spark.kubernetes.container.image.pullPolicy=Never \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
+    --conf spark.kubernetes.authenticate.caCertFile="" \
+    --conf spark.kubernetes.authenticate.submission.caCertFile="" \
+    --conf spark.kubernetes.authenticate.trustServerCertificate=true \
     \
     --conf spark.kubernetes.driverEnv.KAFKA_TOPIC="$KAFKA_TOPIC" \
     --conf spark.kubernetes.driverEnv.OUTPUT_PATH="$OUTPUT_PATH" \
@@ -74,7 +79,7 @@ echo "--- Đang submit streaming lên Kubernetes ---"
     \
     --conf spark.driver.memory=1g \
     --conf spark.executor.instances=1 \
-    --conf spark.executor.memory=1g \
+    --conf spark.executor.memory=2g \
     --conf spark.kubernetes.driver.request.cores=0.2 \
     --conf spark.kubernetes.driver.limit.cores=0.3 \
     --conf spark.kubernetes.executor.request.cores=0.5 \

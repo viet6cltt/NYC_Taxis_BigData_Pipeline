@@ -15,7 +15,7 @@ COPY ./spark_jars /opt/spark/jars/
 # Cấu trúc sau khi copy:
 # /opt/spark/work-dir/app/main.py
 # /opt/spark/work-dir/common/bronze_mapper.py
-COPY common/ ./common/
-COPY batch/historical_to_bronze/app/ ./app/
+COPY ./ingestion/common/ ./common/
+COPY ./ingestion/batch/historical_to_bronze/app/ ./app/
 
 RUN chmod 644 /opt/spark/jars/*.jar

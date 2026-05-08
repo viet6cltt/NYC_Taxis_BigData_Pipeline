@@ -13,7 +13,7 @@ do
 		
 		echo "Downloading $FILE..."
 	
-		wget -c --tries=3 --timeout=30 -O ../data/yellow_data/${year}/$FILE "$URL" || echo "Failed: $FILE"
+		wget -c --tries=3 --timeout=30 -O ../../data/yellow_data/${year}/$FILE "$URL" || echo "Failed: $FILE"
 	done
 done
 
@@ -23,7 +23,7 @@ FILE_TAXI_ZONE="taxi_zone_lookup.csv"
 URL_TAXI_ZONE="https://d37ci6vzurychx.cloudfront.net/misc/$FILE_TAXI_ZONE"
 
 echo "Downloading $FILE_TAXI_ZONE..."
-wget -c --tries=3 --timeout=30 -O ../data/$FILE_TAXI_ZONE "$URL_TAXI_ZONE" || echo "Failed: $FILE_TAXI_ZONE"
+wget -c --tries=3 --timeout=30 -O ../../data/$FILE_TAXI_ZONE "$URL_TAXI_ZONE" || echo "Failed: $FILE_TAXI_ZONE"
 
 
 
