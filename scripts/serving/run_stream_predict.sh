@@ -39,6 +39,9 @@ echo "--- Submitting Streaming Inference job to Kubernetes ---"
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.executorEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.kubernetes.driverEnv.MLFLOW_TRACKING_URI="$MLFLOW_TRACKING_URI" \
+    --conf spark.kubernetes.driverEnv.MLFLOW_S3_ENDPOINT_URL="$MINIO_INTERNAL_ENDPOINT" \
+    --conf spark.kubernetes.driverEnv.AWS_ACCESS_KEY_ID="$MINIO_ACCESS_KEY" \
+    --conf spark.kubernetes.driverEnv.AWS_SECRET_ACCESS_KEY="$MINIO_SECRET_KEY" \
     --conf spark.kubernetes.driverEnv.MINIO_ENDPOINT="$MINIO_INTERNAL_ENDPOINT" \
     --conf spark.kubernetes.driverEnv.MINIO_ACCESS_KEY="$MINIO_ACCESS_KEY" \
     --conf spark.kubernetes.driverEnv.MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \

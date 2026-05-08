@@ -149,13 +149,14 @@ run_streaming() {
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     --conf spark.hadoop.fs.s3a.attempts.maximum=3 \
     \
-    --conf spark.driver.memory=1g \
+    --conf spark.driver.memory=1.5g \
     --conf spark.executor.instances=2 \
-    --conf spark.executor.memory=2g \
+    --conf spark.executor.memory=4g \
     --conf spark.kubernetes.driver.request.cores=0.5 \
-    --conf spark.kubernetes.driver.limit.cores=1 \
-    --conf spark.kubernetes.executor.request.cores=0.75 \
-    --conf spark.kubernetes.executor.limit.cores=1.2 \
+    --conf spark.kubernetes.driver.limit.cores=1.5 \
+    --conf spark.kubernetes.executor.request.cores=1 \
+    --conf spark.kubernetes.executor.limit.cores=2 \
+    --conf spark.kubernetes.executor.node.selector.worker=spark\
     \
     --conf spark.sql.shuffle.partitions=4 \
     --conf spark.sql.adaptive.enabled=true \

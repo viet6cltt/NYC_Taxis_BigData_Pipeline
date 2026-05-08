@@ -10,8 +10,8 @@ ENV_FILE="${REPO_ROOT}/.env"
 K8S_API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
 K8S_MASTER="k8s://${K8S_API_SERVER}"
 
-SPARK_VERSION="4.1.1"
-SPARK_DIR="$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3"
+SPARK_VERSION="${SPARK_VERSION:-4.1.1}"
+SPARK_DIR="${SPARK_DIR:-$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3}"
 
 NAMESPACE="spark-operator"
 SERVICE_ACCOUNT="spark-user"
@@ -25,9 +25,17 @@ MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://mlflow.mlflow.svc.cluster.local:5000}"
 XGB_NUM_WORKERS="${XGB_NUM_WORKERS:-2}"
 
+IMAGE_PULL_POLICY="${IMAGE_PULL_POLICY:-Always}"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-4g}"
+SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-2}"
+SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-3}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-10g}"
+SPARK_EXECUTOR_DELETE_ON_TERMINATION="${SPARK_EXECUTOR_DELETE_ON_TERMINATION:-false}"
+
 echo "--- Submitting XGBoost Training job to Kubernetes ---"
 echo "    MLflow Tracking URI: $MLFLOW_TRACKING_URI"
 echo "    XGBoost Spark workers: $XGB_NUM_WORKERS"
+echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES} cores, ${SPARK_EXECUTOR_MEMORY}"
 
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
@@ -35,11 +43,8 @@ echo "    XGBoost Spark workers: $XGB_NUM_WORKERS"
     --name nyc-taxi-train-xgboost \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
     --conf spark.kubernetes.container.image="$IMAGE" \
-<<<<<<< Updated upstream
-    --conf spark.kubernetes.container.image.pullPolicy=Always \
-=======
-    --conf spark.kubernetes.container.image.pullPolicy=IfNotPresent \
->>>>>>> Stashed changes
+    --conf spark.kubernetes.container.image.pullPolicy="$IMAGE_PULL_POLICY" \
+    --conf spark.kubernetes.executor.deleteOnTermination="$SPARK_EXECUTOR_DELETE_ON_TERMINATION" \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
     --conf spark.kubernetes.authenticate.caCertFile="" \
     --conf spark.kubernetes.authenticate.submission.caCertFile="" \
@@ -48,6 +53,9 @@ echo "    XGBoost Spark workers: $XGB_NUM_WORKERS"
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.executorEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.kubernetes.driverEnv.MLFLOW_TRACKING_URI="$MLFLOW_TRACKING_URI" \
+    --conf spark.kubernetes.driverEnv.MLFLOW_S3_ENDPOINT_URL="$MINIO_INTERNAL_ENDPOINT" \
+    --conf spark.kubernetes.driverEnv.AWS_ACCESS_KEY_ID="$MINIO_ACCESS_KEY" \
+    --conf spark.kubernetes.driverEnv.AWS_SECRET_ACCESS_KEY="$MINIO_SECRET_KEY" \
     --conf spark.kubernetes.driverEnv.MINIO_ENDPOINT="$MINIO_INTERNAL_ENDPOINT" \
     --conf spark.kubernetes.driverEnv.MINIO_ACCESS_KEY="$MINIO_ACCESS_KEY" \
     --conf spark.kubernetes.driverEnv.MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \
@@ -63,15 +71,12 @@ echo "    XGBoost Spark workers: $XGB_NUM_WORKERS"
     --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     \
-    --conf spark.driver.memory=4g \
-<<<<<<< Updated upstream
-    --conf spark.executor.instances=2 \
-    --conf spark.executor.memory=4g \
-=======
-    --conf spark.executor.instances=3 \
-    --conf spark.kubernetes.executor.node.selector.worker=spark \
-    --conf spark.executor.memory=6g \
-    --conf spark.kubernetes.driver.node.selector.worker=spark \
->>>>>>> Stashed changes
+    --conf spark.driver.memory="$SPARK_DRIVER_MEMORY" \
+    --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
+    --conf spark.executor.cores="$SPARK_EXECUTOR_CORES" \
+    --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
+    --conf spark.memory.fraction=0.8 \
+    --conf spark.kubernetes.driver.node.selector.node-role.kubernetes.io/control-plane=true \
+    --conf spark.kubernetes.executor.node.selector.workload=ram \
     \
     "$APP_FILE"

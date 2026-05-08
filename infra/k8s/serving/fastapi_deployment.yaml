@@ -16,10 +16,12 @@ spec:
       labels:
         app: nyc-taxi-fastapi
     spec:
+      nodeSelector:
+        role: storage 
       containers:
         - name: fastapi
-          image: nyc-taxi-fastapi:v1.0
-          imagePullPolicy: IfNotPresent
+          image: 100.76.120.58:5000/nyc-taxi-fastapi:v1.0
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:
@@ -29,6 +31,12 @@ spec:
               value: "XGB_NYC_Fare"
             - name: MODEL_STAGE
               value: "Production"
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: "http://minio-api.minio.svc.cluster.local:9000"
+            - name: AWS_ACCESS_KEY_ID
+              value: "minioadmin"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "minioadmin"
             - name: MINIO_ENDPOINT
               value: "http://minio-api.minio.svc.cluster.local:9000"
             - name: MINIO_ACCESS_KEY

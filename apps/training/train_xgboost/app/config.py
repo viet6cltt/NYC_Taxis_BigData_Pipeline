@@ -5,6 +5,11 @@ MINIO_ENDPOINT  = os.getenv("MINIO_ENDPOINT",  "http://minio-api.minio.svc.clust
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 
+# MLflow's S3 artifact repository uses boto3, which reads AWS_* credentials.
+os.environ.setdefault("MLFLOW_S3_ENDPOINT_URL", MINIO_ENDPOINT)
+os.environ.setdefault("AWS_ACCESS_KEY_ID", MINIO_ACCESS_KEY)
+os.environ.setdefault("AWS_SECRET_ACCESS_KEY", MINIO_SECRET_KEY)
+
 # Data paths
 GOLD_FEATURES_PATH = os.getenv("GOLD_FEATURES_PATH", "s3a://lakehouse/gold/nyc-taxi/features")
 

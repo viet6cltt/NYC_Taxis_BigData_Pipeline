@@ -5,6 +5,11 @@ MINIO_ENDPOINT   = os.getenv("MINIO_ENDPOINT",   "http://minio-api.minio.svc.clu
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY",  "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY",  "minioadmin")
 
+# MLflow's S3 artifact repository uses boto3, which reads AWS_* credentials.
+os.environ.setdefault("MLFLOW_S3_ENDPOINT_URL", MINIO_ENDPOINT)
+os.environ.setdefault("AWS_ACCESS_KEY_ID", MINIO_ACCESS_KEY)
+os.environ.setdefault("AWS_SECRET_ACCESS_KEY", MINIO_SECRET_KEY)
+
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local:9092")
 KAFKA_TOPIC             = os.getenv("KAFKA_TOPIC",              "nyc-taxi-trips")

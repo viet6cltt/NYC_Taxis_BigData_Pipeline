@@ -79,5 +79,6 @@ echo "--- Submitting Feature Engineering job to Kubernetes ---"
     --conf spark.executor.memory=4g \
     --conf spark.sql.shuffle.partitions=6 \
     --conf spark.sql.adaptive.enabled=true \
+    --conf spark.kubenetes.driver.node.selector.node-role.kubernetes.io/control-plane=true \
     \
     "$APP_FILE"
