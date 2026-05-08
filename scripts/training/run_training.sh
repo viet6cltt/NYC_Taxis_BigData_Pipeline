@@ -35,7 +35,11 @@ echo "    XGBoost Spark workers: $XGB_NUM_WORKERS"
     --name nyc-taxi-train-xgboost \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
     --conf spark.kubernetes.container.image="$IMAGE" \
+<<<<<<< Updated upstream
     --conf spark.kubernetes.container.image.pullPolicy=Always \
+=======
+    --conf spark.kubernetes.container.image.pullPolicy=IfNotPresent \
+>>>>>>> Stashed changes
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
     --conf spark.kubernetes.authenticate.caCertFile="" \
     --conf spark.kubernetes.authenticate.submission.caCertFile="" \
@@ -60,7 +64,14 @@ echo "    XGBoost Spark workers: $XGB_NUM_WORKERS"
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     \
     --conf spark.driver.memory=4g \
+<<<<<<< Updated upstream
     --conf spark.executor.instances=2 \
     --conf spark.executor.memory=4g \
+=======
+    --conf spark.executor.instances=3 \
+    --conf spark.kubernetes.executor.node.selector.worker=spark \
+    --conf spark.executor.memory=6g \
+    --conf spark.kubernetes.driver.node.selector.worker=spark \
+>>>>>>> Stashed changes
     \
     "$APP_FILE"
