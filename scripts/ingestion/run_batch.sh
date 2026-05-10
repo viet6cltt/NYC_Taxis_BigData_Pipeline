@@ -78,7 +78,7 @@ echo "--- Đang submit batch job lên Kubernetes ---"
     \
     --conf spark.driver.memory=2g \
     --conf spark.executor.instances=2 \
-    --conf spark.executor.memory=4g \
+    --conf spark.executor.memory=3584m \
     --conf spark.kubernetes.driver.request.cores=1 \
     --conf spark.kubernetes.driver.limit.cores=2 \
     --conf spark.kubernetes.executor.request.cores=1 \
