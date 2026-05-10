@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nyc-taxi-streaming
-  namespace: nyc-taxi
+  namespace: spark-operator
 spec:
   replicas: 1
   selector: 
@@ -26,12 +26,15 @@ spec:
               done
       containers:
         - name: producer
-          image: nyc-taxi-replay:v1
-          imagePullPolicy: Never
-          envFrom:
-            - configMapRef:
-                name: nyc-taxi-ingestion-config
+          image: 100.76.120.58:5000/nyc-taxi-replay:v1.0
+          imagePullPolicy: Always
           env:
+            - name: KAFKA_STARTED_TOPIC
+              value: "nyc-taxi-trip-started"
+            - name: KAFKA_COMPLETED_TOPIC
+              value: "nyc-taxi-trip-completed"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "my-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
             - name: DATA_DIR
               value: "/data/yellow_data"
             - name: YEAR
@@ -56,6 +59,5 @@ spec:
               mountPath: /data
       volumes:
         - name: taxi-data
-          hostPath:
-            path: /mnt/nyc-data
-            type: Directory
+          persistentVolumeClaim:
+            claimName: nfs-nyc-taxi-pvc

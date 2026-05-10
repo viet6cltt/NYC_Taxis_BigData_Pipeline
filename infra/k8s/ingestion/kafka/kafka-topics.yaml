@@ -1,13 +1,27 @@
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
-  name: nyc-taxi-events
+  name: nyc-taxi-trip-started
   namespace: kafka
   labels:
     strimzi.io/cluster: my-kafka-cluster
 spec:
   partitions: 3
   replicas: 1
-  config: 
+  config:
     retention.ms: 604800000 # 7 days
-    segment.bytes: 1073741824 # 1 GB 
+    segment.bytes: 1073741824 # 1 GB
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: nyc-taxi-trip-completed
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-kafka-cluster
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 604800000 # 7 days
+    segment.bytes: 1073741824 # 1 GB

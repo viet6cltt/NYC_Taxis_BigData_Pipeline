@@ -1,6 +1,8 @@
 import os 
+from common.constants import KAFKA_TOPIC_TRIP_COMPLETED, KAFKA_TOPIC_TRIP_STARTED
 
-KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "nyc-taxi-events")
+KAFKA_STARTED_TOPIC = os.getenv("KAFKA_STARTED_TOPIC", KAFKA_TOPIC_TRIP_STARTED)
+KAFKA_COMPLETED_TOPIC = os.getenv("KAFKA_COMPLETED_TOPIC", KAFKA_TOPIC_TRIP_COMPLETED)
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "my-kafka-cluster-kafka-bootstrap.kafka:9092")
 
 DATA_DIR = os.getenv("DATA_DIR", "/data/yellow_data")

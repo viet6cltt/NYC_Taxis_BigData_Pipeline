@@ -15,3 +15,5 @@ apps/spark_jars/*
 learning.md
 
 .env
+
+PLAN.md
