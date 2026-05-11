@@ -1,36 +1,31 @@
 """
-Spark Structured Streaming — Real-time Fare Prediction
+Spark Structured Streaming — Real-time Fare Prediction.
 
 Flow:
-  Kafka (nyc-taxi-trips)
-    → Decode Avro
-    → Feature extraction (stateless)
-    → XGBoost inference (mapInPandas + broadcast)
-    → Write predictions to Gold Delta Lake
+  silver/trip_started Delta stream
+    -> route_estimates lookup
+    -> in-memory feature engineering
+    -> XGBoost inference
+    -> gold/ml/predictions Delta append log
 """
 
-import os
 from pyspark.sql import SparkSession
-from pyspark.sql.avro.functions import from_avro
-from pyspark.sql.functions import col
+from pyspark.sql import functions as F
 
 from app.config import (
-    KAFKA_BOOTSTRAP_SERVERS,
-    KAFKA_TOPIC,
-    GOLD_PREDICTIONS_PATH,
     CHECKPOINT_LOCATION,
-    MINIO_ENDPOINT,
+    GOLD_PREDICTIONS_PATH,
+    GOLD_ROUTE_ESTIMATES_PATH,
     MINIO_ACCESS_KEY,
+    MINIO_ENDPOINT,
     MINIO_SECRET_KEY,
+    SILVER_STARTED_PATH,
+    STARTING_VERSION,
     TRIGGER_INTERVAL,
-    FEATURE_COLS,
 )
-from app.model_loader import load_production_model, get_model_version
 from app.feature_extractor import extract_features
+from app.model_loader import get_model_version, load_production_model
 from app.predictor import apply_predictions, build_output_schema
-
-
-AVRO_SCHEMA_PATH = "schemas/taxi_trip_event.avsc"
 
 
 def build_spark_session() -> SparkSession:
@@ -44,87 +39,60 @@ def build_spark_session() -> SparkSession:
     )
 
     hc = spark._jsc.hadoopConfiguration()
-    hc.set("fs.s3a.endpoint",               MINIO_ENDPOINT)
-    hc.set("fs.s3a.access.key",             MINIO_ACCESS_KEY)
-    hc.set("fs.s3a.secret.key",             MINIO_SECRET_KEY)
-    hc.set("fs.s3a.path.style.access",      "true")
-    hc.set("fs.s3a.impl",                   "org.apache.hadoop.fs.s3a.S3AFileSystem")
+    hc.set("fs.s3a.endpoint", MINIO_ENDPOINT)
+    hc.set("fs.s3a.access.key", MINIO_ACCESS_KEY)
+    hc.set("fs.s3a.secret.key", MINIO_SECRET_KEY)
+    hc.set("fs.s3a.path.style.access", "true")
+    hc.set("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
     hc.set("fs.s3a.connection.ssl.enabled", "false")
-    hc.set("fs.s3a.attempts.maximum",       "3")
+    hc.set("fs.s3a.attempts.maximum", "3")
 
     return spark
 
 
-def load_avro_schema(path: str) -> str:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Avro schema not found: {path}")
-    with open(path, "r") as f:
-        return f.read()
+def read_started_stream(spark: SparkSession):
+    reader = spark.readStream.format("delta")
+    if STARTING_VERSION:
+        reader = reader.option("startingVersion", STARTING_VERSION)
+    return reader.load(SILVER_STARTED_PATH)
 
 
 def main() -> None:
     print("=== [stream_predict] Starting Real-time Fare Prediction ===")
+    print(f"[stream_predict] Silver started path: {SILVER_STARTED_PATH}")
+    print(f"[stream_predict] Route estimates path: {GOLD_ROUTE_ESTIMATES_PATH}")
+    print(f"[stream_predict] Predictions path: {GOLD_PREDICTIONS_PATH}")
 
-    # Load model on driver (once)
-    model         = load_production_model()
+    model = load_production_model()
     model_version = get_model_version()
     print(f"[stream_predict] Model version: {model_version}")
 
     spark = build_spark_session()
-
-    # ------------------------------------------------------------------
-    # 1. Read Kafka stream
-    # ------------------------------------------------------------------
-    kafka_df = (
-        spark.readStream
-        .format("kafka")
-        .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
-        .option("subscribe",               KAFKA_TOPIC)
-        .option("startingOffsets",         "latest")
-        .option("failOnDataLoss",          "false")
-        .load()
-    )
-
-    # ------------------------------------------------------------------
-    # 2. Decode Avro
-    # ------------------------------------------------------------------
-    avro_schema_str = load_avro_schema(AVRO_SCHEMA_PATH)
-    decoded_df = (
-        kafka_df
-        .select(
-            from_avro(col("value"), avro_schema_str, {"mode": "PERMISSIVE"}).alias("event")
-        )
-        .filter(col("event").isNotNull())
-        .select("event.metadata.*", "event.payload.*")
-    )
-
-    # ------------------------------------------------------------------
-    # 3. Feature extraction (stateless)
-    # ------------------------------------------------------------------
-    feature_df = extract_features(decoded_df)
-
-    # ------------------------------------------------------------------
-    # 4. Build output schema and apply predictions per micro-batch
-    # ------------------------------------------------------------------
+    route_estimates_df = spark.read.format("delta").load(GOLD_ROUTE_ESTIMATES_PATH)
+    started_df = read_started_stream(spark)
+    feature_df = extract_features(started_df, route_estimates_df)
     out_schema = build_output_schema(feature_df.schema)
 
     def process_batch(batch_df, batch_id):
         if batch_df.isEmpty():
             return
-        print(f"[stream_predict] Batch {batch_id} — {batch_df.count()} rows")
-        predictions_df = apply_predictions(batch_df, model, model_version, out_schema)
+
+        row_count = batch_df.count()
+        print(f"[stream_predict] Batch {batch_id} - {row_count} rows")
+        predictions_df = (
+            apply_predictions(batch_df, model, model_version, out_schema)
+            .withColumn("prediction_timestamp", F.current_timestamp())
+        )
         (
             predictions_df
             .write
             .format("delta")
             .mode("append")
             .option("mergeSchema", "true")
+            .partitionBy("year_month")
             .save(GOLD_PREDICTIONS_PATH)
         )
 
-    # ------------------------------------------------------------------
-    # 5. Start streaming query
-    # ------------------------------------------------------------------
     query = (
         feature_df.writeStream
         .foreachBatch(process_batch)
@@ -133,7 +101,7 @@ def main() -> None:
         .start()
     )
 
-    print(f"[stream_predict] Streaming query started. Writing to {GOLD_PREDICTIONS_PATH}")
+    print(f"[stream_predict] Streaming query started. checkpoint={CHECKPOINT_LOCATION}")
     query.awaitTermination()
 
 

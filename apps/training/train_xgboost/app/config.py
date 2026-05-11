@@ -11,7 +11,7 @@ os.environ.setdefault("AWS_ACCESS_KEY_ID", MINIO_ACCESS_KEY)
 os.environ.setdefault("AWS_SECRET_ACCESS_KEY", MINIO_SECRET_KEY)
 
 # Data paths
-GOLD_FEATURES_PATH = os.getenv("GOLD_FEATURES_PATH", "s3a://lakehouse/gold/nyc-taxi/features")
+GOLD_FEATURES_PATH = os.getenv("GOLD_FEATURES_PATH", "s3a://lakehouse/gold/ml/features")
 
 # MLflow
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.mlflow.svc.cluster.local:5000")
@@ -27,9 +27,9 @@ XGB_NUM_WORKERS = int(os.getenv("XGB_NUM_WORKERS", "2"))
 # Features used (must match Gold schema from feature_engineering/app/transform.py)
 FEATURE_COLS = [
     "passenger_count",
-    "trip_distance",
-    "trip_duration_seconds",
-    "speed",
+    "estimated_trip_distance",
+    "estimated_trip_duration_seconds",
+    "estimated_speed",
     "pickup_hour",
     "pickup_day_of_week",
     "is_weekend",

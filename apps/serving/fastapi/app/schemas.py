@@ -6,8 +6,8 @@ class TripRequest(BaseModel):
     """Input payload for fare prediction."""
 
     passenger_count:      int   = Field(..., ge=1, le=6,    example=2,   description="Number of passengers")
-    trip_distance:        float = Field(..., gt=0,           example=3.5, description="Trip distance in miles")
-    trip_duration_seconds: float = Field(..., gt=0,          example=900, description="Trip duration in seconds")
+    estimated_trip_distance: float = Field(..., gt=0,        example=3.5, description="Estimated trip distance in miles")
+    estimated_trip_duration_seconds: float = Field(..., gt=0, example=900, description="Estimated trip duration in seconds")
     pickup_hour:          int   = Field(..., ge=0, le=23,    example=14,  description="Hour of pickup (0-23)")
     pickup_day_of_week:   int   = Field(..., ge=0, le=6,    example=2,   description="Day of week (0=Mon, 6=Sun)")
     pulocation_id:        Optional[int] = Field(None, example=161, description="Pickup TLC zone ID")

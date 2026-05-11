@@ -10,13 +10,24 @@ os.environ.setdefault("MLFLOW_S3_ENDPOINT_URL", MINIO_ENDPOINT)
 os.environ.setdefault("AWS_ACCESS_KEY_ID", MINIO_ACCESS_KEY)
 os.environ.setdefault("AWS_SECRET_ACCESS_KEY", MINIO_SECRET_KEY)
 
-# Kafka
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local:9092")
-KAFKA_TOPIC             = os.getenv("KAFKA_TOPIC",              "nyc-taxi-trips")
-
-# Output
-GOLD_PREDICTIONS_PATH = os.getenv("GOLD_PREDICTIONS_PATH", "s3a://gold/predictions/")
-CHECKPOINT_LOCATION   = os.getenv("CHECKPOINT_LOCATION",   "s3a://gold/checkpoints/stream_predict/")
+# Input / lookup / output
+SILVER_STARTED_PATH = os.getenv(
+    "SILVER_STARTED_PATH",
+    "s3a://lakehouse/silver/nyc-taxi/trip_started",
+)
+GOLD_ROUTE_ESTIMATES_PATH = os.getenv(
+    "GOLD_ROUTE_ESTIMATES_PATH",
+    "s3a://lakehouse/gold/ml/route_estimates",
+)
+GOLD_PREDICTIONS_PATH = os.getenv(
+    "GOLD_PREDICTIONS_PATH",
+    "s3a://lakehouse/gold/ml/predictions",
+)
+CHECKPOINT_LOCATION = os.getenv(
+    "CHECKPOINT_LOCATION",
+    "s3a://lakehouse/_checkpoints/gold/ml/stream_predict",
+)
+STARTING_VERSION = os.getenv("STARTING_VERSION")
 
 # MLflow
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.mlflow.svc.cluster.local:5000")
@@ -26,12 +37,16 @@ MODEL_STAGE         = os.getenv("MODEL_STAGE",          "Production")
 # Streaming
 TRIGGER_INTERVAL = os.getenv("TRIGGER_INTERVAL", "30 seconds")
 
+# Feature helper settings. Keep defaults aligned with feature_engineering.
+N_LOCATION_CLUSTERS = int(os.getenv("N_LOCATION_CLUSTERS", "5"))
+N_TEMPORAL_CLUSTERS = int(os.getenv("N_TEMPORAL_CLUSTERS", "4"))
+
 # Features (must match training)
 FEATURE_COLS = [
     "passenger_count",
-    "trip_distance",
-    "trip_duration_seconds",
-    "speed",
+    "estimated_trip_distance",
+    "estimated_trip_duration_seconds",
+    "estimated_speed",
     "pickup_hour",
     "pickup_day_of_week",
     "is_weekend",

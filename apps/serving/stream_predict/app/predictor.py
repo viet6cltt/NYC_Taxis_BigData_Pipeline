@@ -23,9 +23,10 @@ def make_predict_fn(bc_model, bc_feature_cols, bc_model_version):
 
         for pdf in iterator:
             X = pdf[feature_cols].fillna(0).replace([np.inf, -np.inf], 0)
-            pdf["predicted_fare"]  = model.predict(X).astype(float)
-            pdf["model_name"]      = MODEL_NAME
-            pdf["model_version"]   = model_version
+            pdf["predicted_fare_amount"] = model.predict(X).astype(float)
+            pdf["model_name"] = MODEL_NAME
+            pdf["model_version"] = model_version
+            pdf["model_stage"] = MODEL_STAGE
             yield pdf
 
     return _predict
@@ -59,7 +60,8 @@ def build_output_schema(input_schema: StructType) -> StructType:
     """Extend input schema with prediction output columns."""
     return (
         input_schema
-        .add(StructField("predicted_fare",  DoubleType(), True))
-        .add(StructField("model_name",      StringType(), True))
-        .add(StructField("model_version",   StringType(), True))
+        .add(StructField("predicted_fare_amount", DoubleType(), True))
+        .add(StructField("model_name", StringType(), True))
+        .add(StructField("model_version", StringType(), True))
+        .add(StructField("model_stage", StringType(), True))
     )
