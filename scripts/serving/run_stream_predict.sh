@@ -1,5 +1,6 @@
 #!/bin/bash
-# Run Spark Streaming Inference: Kafka → XGBoost → Gold Predictions
+# Run Spark Streaming Inference:
+# Silver trip_started -> route_estimates lookup -> XGBoost -> Gold predictions
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,9 +23,24 @@ MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.c
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://mlflow.mlflow.svc.cluster.local:5000}"
-KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local:9092}"
+SILVER_STARTED_PATH="${SILVER_STARTED_PATH:-s3a://lakehouse/silver/nyc-taxi/trip_started}"
+GOLD_ROUTE_ESTIMATES_PATH="${GOLD_ROUTE_ESTIMATES_PATH:-s3a://lakehouse/gold/ml/route_estimates}"
+GOLD_PREDICTIONS_PATH="${GOLD_PREDICTIONS_PATH:-s3a://lakehouse/gold/ml/predictions}"
+CHECKPOINT_LOCATION="${CHECKPOINT_LOCATION:-s3a://lakehouse/_checkpoints/gold/ml/stream_predict}"
+TRIGGER_INTERVAL="${TRIGGER_INTERVAL:-30 seconds}"
+STARTING_VERSION="${STARTING_VERSION:-}"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
+SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-2g}"
+N_LOCATION_CLUSTERS="${N_LOCATION_CLUSTERS:-5}"
+N_TEMPORAL_CLUSTERS="${N_TEMPORAL_CLUSTERS:-4}"
 
 echo "--- Submitting Streaming Inference job to Kubernetes ---"
+
+starting_version_conf=()
+if [ -n "$STARTING_VERSION" ]; then
+    starting_version_conf=(--conf "spark.kubernetes.driverEnv.STARTING_VERSION=$STARTING_VERSION")
+fi
 
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
@@ -45,7 +61,13 @@ echo "--- Submitting Streaming Inference job to Kubernetes ---"
     --conf spark.kubernetes.driverEnv.MINIO_ENDPOINT="$MINIO_INTERNAL_ENDPOINT" \
     --conf spark.kubernetes.driverEnv.MINIO_ACCESS_KEY="$MINIO_ACCESS_KEY" \
     --conf spark.kubernetes.driverEnv.MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \
-    --conf spark.kubernetes.driverEnv.KAFKA_BOOTSTRAP_SERVERS="$KAFKA_BOOTSTRAP_SERVERS" \
+    --conf spark.kubernetes.driverEnv.SILVER_STARTED_PATH="$SILVER_STARTED_PATH" \
+    --conf spark.kubernetes.driverEnv.GOLD_ROUTE_ESTIMATES_PATH="$GOLD_ROUTE_ESTIMATES_PATH" \
+    --conf spark.kubernetes.driverEnv.GOLD_PREDICTIONS_PATH="$GOLD_PREDICTIONS_PATH" \
+    --conf spark.kubernetes.driverEnv.CHECKPOINT_LOCATION="$CHECKPOINT_LOCATION" \
+    --conf spark.kubernetes.driverEnv.TRIGGER_INTERVAL="$TRIGGER_INTERVAL" \
+    --conf spark.kubernetes.driverEnv.N_LOCATION_CLUSTERS="$N_LOCATION_CLUSTERS" \
+    --conf spark.kubernetes.driverEnv.N_TEMPORAL_CLUSTERS="$N_TEMPORAL_CLUSTERS" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
     --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
     \
@@ -56,9 +78,10 @@ echo "--- Submitting Streaming Inference job to Kubernetes ---"
     --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     \
-    --conf spark.driver.memory=2g \
-    --conf spark.executor.instances=2 \
-    --conf spark.executor.memory=3g \
+    --conf spark.driver.memory="$SPARK_DRIVER_MEMORY" \
+    --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
+    --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.sql.shuffle.partitions=4 \
     \
+    "${starting_version_conf[@]}" \
     "$APP_FILE"

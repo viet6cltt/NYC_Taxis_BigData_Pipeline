@@ -1,5 +1,9 @@
 #!/bin/bash
-# Run Feature Engineering: Silver Delta → Gold Delta
+# Run Gold ML batch jobs:
+#   route_estimates       Silver completed -> Gold route estimates
+#   features              Silver completed + route estimates -> Gold training features
+#   prediction_actuals    Gold predictions + Silver completed -> Gold delayed-label table
+#   model_quality_daily   Gold prediction_actuals -> Gold model quality metrics
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,9 +28,13 @@ K8S_MASTER="k8s://${K8S_API_SERVER}"
 NAMESPACE="spark-operator"
 SERVICE_ACCOUNT="spark-user"
 
-
-SILVER_PATH="${SILVER_PATH:-s3a://lakehouse/silver/nyc-taxi/trips}"
-GOLD_FEATURES_PATH="${GOLD_FEATURES_PATH:-s3a://lakehouse/gold/nyc-taxi/features}"
+GOLD_JOB="${1:-features}"
+SILVER_COMPLETED_PATH="${SILVER_COMPLETED_PATH:-s3a://lakehouse/silver/nyc-taxi/trip_completed}"
+GOLD_ROUTE_ESTIMATES_PATH="${GOLD_ROUTE_ESTIMATES_PATH:-s3a://lakehouse/gold/ml/route_estimates}"
+GOLD_FEATURES_PATH="${GOLD_FEATURES_PATH:-s3a://lakehouse/gold/ml/features}"
+GOLD_PREDICTIONS_PATH="${GOLD_PREDICTIONS_PATH:-s3a://lakehouse/gold/ml/predictions}"
+GOLD_PREDICTION_ACTUALS_PATH="${GOLD_PREDICTION_ACTUALS_PATH:-s3a://lakehouse/gold/ml/prediction_actuals}"
+GOLD_MODEL_QUALITY_DAILY_PATH="${GOLD_MODEL_QUALITY_DAILY_PATH:-s3a://lakehouse/gold/monitoring/model_quality_daily}"
 WRITE_MODE="${WRITE_MODE:-overwrite}"
 
 MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.cluster.local:9000}"
@@ -36,6 +44,12 @@ MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 # Image
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-feature-engineering:v1.0"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-2g}"
+SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-2}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-2g}"
+SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-1}"
+N_LOCATION_CLUSTERS="${N_LOCATION_CLUSTERS:-5}"
+N_TEMPORAL_CLUSTERS="${N_TEMPORAL_CLUSTERS:-4}"
 
 if [ ! -d "$SPARK_DIR" ]; then
     echo "--- Downloading Spark ${SPARK_VERSION} ---"
@@ -45,12 +59,12 @@ if [ ! -d "$SPARK_DIR" ]; then
     rm "${SPARK_DIR}.tgz"
 fi
 
-echo "--- Submitting Feature Engineering job to Kubernetes ---"
+echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
 
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
     --deploy-mode cluster \
-    --name nyc-taxi-feature-engineering \
+    --name "nyc-taxi-gold-${GOLD_JOB}" \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
     --conf spark.kubernetes.container.image="$IMAGE" \
     --conf spark.kubernetes.container.image.pullPolicy=Always \
@@ -61,9 +75,16 @@ echo "--- Submitting Feature Engineering job to Kubernetes ---"
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.executorEnv.PYTHONPATH="/opt/spark/work-dir" \
-    --conf spark.kubernetes.driverEnv.SILVER_PATH="$SILVER_PATH" \
+    --conf spark.kubernetes.driverEnv.GOLD_JOB="$GOLD_JOB" \
+    --conf spark.kubernetes.driverEnv.SILVER_COMPLETED_PATH="$SILVER_COMPLETED_PATH" \
+    --conf spark.kubernetes.driverEnv.GOLD_ROUTE_ESTIMATES_PATH="$GOLD_ROUTE_ESTIMATES_PATH" \
     --conf spark.kubernetes.driverEnv.GOLD_FEATURES_PATH="$GOLD_FEATURES_PATH" \
+    --conf spark.kubernetes.driverEnv.GOLD_PREDICTIONS_PATH="$GOLD_PREDICTIONS_PATH" \
+    --conf spark.kubernetes.driverEnv.GOLD_PREDICTION_ACTUALS_PATH="$GOLD_PREDICTION_ACTUALS_PATH" \
+    --conf spark.kubernetes.driverEnv.GOLD_MODEL_QUALITY_DAILY_PATH="$GOLD_MODEL_QUALITY_DAILY_PATH" \
     --conf spark.kubernetes.driverEnv.WRITE_MODE="$WRITE_MODE" \
+    --conf spark.kubernetes.driverEnv.N_LOCATION_CLUSTERS="$N_LOCATION_CLUSTERS" \
+    --conf spark.kubernetes.driverEnv.N_TEMPORAL_CLUSTERS="$N_TEMPORAL_CLUSTERS" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
     --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
     \
@@ -74,11 +95,11 @@ echo "--- Submitting Feature Engineering job to Kubernetes ---"
     --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     \
-    --conf spark.driver.memory=2g \
-    --conf spark.executor.instances=4 \
-    --conf spark.executor.memory=4g \
+    --conf spark.driver.memory="$SPARK_DRIVER_MEMORY" \
+    --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
+    --conf spark.executor.cores="$SPARK_EXECUTOR_CORES" \
+    --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.sql.shuffle.partitions=6 \
     --conf spark.sql.adaptive.enabled=true \
-    --conf spark.kubenetes.driver.node.selector.node-role.kubernetes.io/control-plane=true \
     \
     "$APP_FILE"

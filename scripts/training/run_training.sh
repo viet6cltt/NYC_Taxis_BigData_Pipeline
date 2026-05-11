@@ -17,7 +17,7 @@ NAMESPACE="spark-operator"
 SERVICE_ACCOUNT="spark-user"
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-train-xgboost:v1.0"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
-GOLD_FEATURES_PATH="${GOLD_FEATURES_PATH:-s3a://lakehouse/gold/nyc-taxi/features}"
+GOLD_FEATURES_PATH="${GOLD_FEATURES_PATH:-s3a://lakehouse/gold/ml/features}"
 
 MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.cluster.local:9000}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"

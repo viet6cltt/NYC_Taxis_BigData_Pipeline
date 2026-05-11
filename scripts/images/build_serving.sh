@@ -10,13 +10,9 @@ echo "=== Building Serving Images (registry: $REGISTRY) ==="
 
 # Spark Streaming Inference
 echo "--- Building nyc-taxi-stream-predict ---"
-# Copy shared Avro schema into build context
-cp -r "${REPO_ROOT}/apps/ingestion/streaming/schemas" \
-      "${REPO_ROOT}/apps/serving/stream_predict/schemas"
 docker build \
     -t "${REGISTRY}/nyc-taxi-stream-predict:v1.0" \
     "${REPO_ROOT}/apps/serving/stream_predict"
-rm -rf "${REPO_ROOT}/apps/serving/stream_predict/schemas"
 
 # FastAPI
 echo "--- Building nyc-taxi-fastapi ---"

@@ -43,6 +43,10 @@ spec:
               value: "minioadmin"
             - name: MINIO_SECRET_KEY
               value: "minioadmin"
+            - name: N_LOCATION_CLUSTERS
+              value: "5"
+            - name: N_TEMPORAL_CLUSTERS
+              value: "4"
           livenessProbe:
             httpGet:
               path: /health

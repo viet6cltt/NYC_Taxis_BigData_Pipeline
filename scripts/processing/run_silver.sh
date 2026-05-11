@@ -113,11 +113,11 @@ submit_silver_job() {
     \
     --conf spark.driver.memory=1g \
     --conf spark.executor.instances=2 \
-    --conf spark.executor.memory=2048m \
+    --conf spark.executor.memory="1536m" \
     --conf spark.kubernetes.driver.request.cores=0.5 \
     --conf spark.kubernetes.driver.limit.cores=1.5 \
-    --conf spark.kubernetes.executor.request.cores=1 \
-    --conf spark.kubernetes.executor.limit.cores=2.5 \
+    --conf spark.kubernetes.executor.request.cores=0.75 \
+    --conf spark.kubernetes.executor.limit.cores=1.5 \
     \
     --conf spark.sql.shuffle.partitions=4 \
     --conf spark.sql.adaptive.enabled=true \
