@@ -39,7 +39,15 @@ COMPLETED_CHECKPOINT_PATH="s3a://lakehouse/_checkpoints/silver/trip_completed/pr
 TRIGGER_INTERVAL="${TRIGGER_INTERVAL:-30 seconds}"
 WATERMARK_DELAY="${WATERMARK_DELAY:-48 hours}"
 LIFECYCLE_TTL_HOURS="${LIFECYCLE_TTL_HOURS:-48}"
+LIFECYCLE_MERGE_ENABLED="${LIFECYCLE_MERGE_ENABLED:-true}"
 STARTING_VERSION="${STARTING_VERSION:-}"
+SPARK_LOCAL_DIR="${SPARK_LOCAL_DIR:-/data/spark-local/silver}"
+TMPDIR="${TMPDIR:-/data/tmp/silver}"
+S3A_BUFFER_DIR="${S3A_BUFFER_DIR:-/data/s3a-buffer/silver}"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
+SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-2g}"
+SPARK_SHUFFLE_PARTITIONS="${SPARK_SHUFFLE_PARTITIONS:-4}"
 
 # MinIO / Delta
 MINIO_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.cluster.local:9000}"
@@ -57,6 +65,45 @@ else
     echo "--- Đã tìm thấy Spark tại $SPARK_DIR ---"
 fi
 
+ensure_data_dirs() {
+    local pod_name="nyc-taxi-silver-dir-init"
+    local mkdir_cmd="mkdir -p '$SPARK_LOCAL_DIR' '$TMPDIR' '$S3A_BUFFER_DIR' && chmod 777 '$SPARK_LOCAL_DIR' '$TMPDIR' '$S3A_BUFFER_DIR'"
+
+    echo "--- Ensuring Spark temp directories on /data PVC ---"
+    kubectl delete pod "$pod_name" -n "$NAMESPACE" --ignore-not-found=true >/dev/null
+    kubectl run "$pod_name" \
+        -n "$NAMESPACE" \
+        --image=busybox:1.35 \
+        --restart=Never \
+        --overrides='{
+          "spec": {
+            "volumes": [
+              {
+                "name": "data-vol",
+                "persistentVolumeClaim": {
+                  "claimName": "nfs-nyc-taxi-pvc"
+                }
+              }
+            ],
+            "containers": [
+              {
+                "name": "nyc-taxi-silver-dir-init",
+                "image": "busybox:1.35",
+                "command": ["sh", "-c", "'"$mkdir_cmd"'"],
+                "volumeMounts": [
+                  {
+                    "name": "data-vol",
+                    "mountPath": "/data"
+                  }
+                ]
+              }
+            ]
+          }
+        }' >/dev/null
+    kubectl wait --for=jsonpath='{.status.phase}'=Succeeded "pod/$pod_name" -n "$NAMESPACE" --timeout=120s >/dev/null
+    kubectl delete pod "$pod_name" -n "$NAMESPACE" --ignore-not-found=true >/dev/null
+}
+
 submit_silver_job() {
     local silver_job="$1"
     local pipeline_mode="$2"
@@ -70,6 +117,7 @@ submit_silver_job() {
     fi
 
     echo "--- Submit silver job=${silver_job}, mode=${pipeline_mode} ---"
+    ensure_data_dirs
 
     "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
@@ -92,11 +140,14 @@ submit_silver_job() {
     --conf spark.kubernetes.driverEnv.TRIGGER_INTERVAL="$TRIGGER_INTERVAL" \
     --conf spark.kubernetes.driverEnv.WATERMARK_DELAY="$WATERMARK_DELAY" \
     --conf spark.kubernetes.driverEnv.LIFECYCLE_TTL_HOURS="$LIFECYCLE_TTL_HOURS" \
+    --conf spark.kubernetes.driverEnv.LIFECYCLE_MERGE_ENABLED="$LIFECYCLE_MERGE_ENABLED" \
+    --conf spark.kubernetes.driverEnv.TMPDIR="$TMPDIR" \
+    --conf spark.executorEnv.TMPDIR="$TMPDIR" \
     \
-    --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.mount.path=/data \
-    --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.options.claimName=nfs-nyc-taxi-pvc \
-    --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.mount.path=/data \
-    --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.data-vol.options.claimName=nfs-nyc-taxi-pvc \
+    --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.spark-local-dir-silver.mount.path=/data \
+    --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.spark-local-dir-silver.options.claimName=nfs-nyc-taxi-pvc \
+    --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-local-dir-silver.mount.path=/data \
+    --conf spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-local-dir-silver.options.claimName=nfs-nyc-taxi-pvc \
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.executorEnv.PYTHONPATH="/opt/spark/work-dir" \
@@ -110,16 +161,22 @@ submit_silver_job() {
     --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     --conf spark.hadoop.fs.s3a.attempts.maximum=3 \
+    --conf spark.hadoop.fs.s3a.fast.upload=true \
+    --conf spark.hadoop.fs.s3a.fast.upload.buffer=disk \
+    --conf spark.hadoop.fs.s3a.buffer.dir="$S3A_BUFFER_DIR" \
     \
-    --conf spark.driver.memory=1g \
-    --conf spark.executor.instances=2 \
-    --conf spark.executor.memory="1536m" \
+    --conf spark.local.dir="$SPARK_LOCAL_DIR" \
+    --conf spark.driver.extraJavaOptions="-Djava.io.tmpdir=$TMPDIR" \
+    --conf spark.executor.extraJavaOptions="-Djava.io.tmpdir=$TMPDIR" \
+    --conf spark.driver.memory="$SPARK_DRIVER_MEMORY" \
+    --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
+    --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.kubernetes.driver.request.cores=0.5 \
     --conf spark.kubernetes.driver.limit.cores=1.5 \
-    --conf spark.kubernetes.executor.request.cores=0.75 \
-    --conf spark.kubernetes.executor.limit.cores=1.5 \
+    --conf spark.kubernetes.executor.request.cores=0.5 \
+    --conf spark.kubernetes.executor.limit.cores=1 \
     \
-    --conf spark.sql.shuffle.partitions=4 \
+    --conf spark.sql.shuffle.partitions="$SPARK_SHUFFLE_PARTITIONS" \
     --conf spark.sql.adaptive.enabled=true \
     --conf spark.sql.adaptive.coalescePartitions.enabled=true \
     \

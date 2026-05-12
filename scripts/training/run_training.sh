@@ -24,17 +24,20 @@ MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://mlflow.mlflow.svc.cluster.local:5000}"
 XGB_NUM_WORKERS="${XGB_NUM_WORKERS:-2}"
+SPLIT_STRATEGY="${SPLIT_STRATEGY:-random}"
+TIME_SPLIT_MONTH="${TIME_SPLIT_MONTH:-2024-11}"
 
 IMAGE_PULL_POLICY="${IMAGE_PULL_POLICY:-Always}"
 SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-4g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-2}"
 SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-3}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-10g}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-8g}"
 SPARK_EXECUTOR_DELETE_ON_TERMINATION="${SPARK_EXECUTOR_DELETE_ON_TERMINATION:-false}"
 
 echo "--- Submitting XGBoost Training job to Kubernetes ---"
 echo "    MLflow Tracking URI: $MLFLOW_TRACKING_URI"
 echo "    XGBoost Spark workers: $XGB_NUM_WORKERS"
+echo "    Split strategy: $SPLIT_STRATEGY"
 echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES} cores, ${SPARK_EXECUTOR_MEMORY}"
 
 "$SPARK_DIR/bin/spark-submit" \
@@ -61,6 +64,8 @@ echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES}
     --conf spark.kubernetes.driverEnv.MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \
     --conf spark.kubernetes.driverEnv.GOLD_FEATURES_PATH="$GOLD_FEATURES_PATH" \
     --conf spark.kubernetes.driverEnv.XGB_NUM_WORKERS="$XGB_NUM_WORKERS" \
+    --conf spark.kubernetes.driverEnv.SPLIT_STRATEGY="$SPLIT_STRATEGY" \
+    --conf spark.kubernetes.driverEnv.TIME_SPLIT_MONTH="$TIME_SPLIT_MONTH" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
     --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
     \
@@ -76,7 +81,7 @@ echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES}
     --conf spark.executor.cores="$SPARK_EXECUTOR_CORES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.memory.fraction=0.8 \
-    --conf spark.kubernetes.driver.node.selector.node-role.kubernetes.io/control-plane=true \
-    --conf spark.kubernetes.executor.node.selector.workload=ram \
+    --conf spark.kubernetes.driver.node.selector.workload=spark \
+    --conf spark.kubernetes.executor.node.selector.workload=spark \
     \
     "$APP_FILE"

@@ -88,7 +88,7 @@ echo "    OUTPUT_PATH=${OUTPUT_PATH}"
     --conf spark.hadoop.fs.s3a.attempts.maximum=3 \
     \
     --conf spark.driver.memory=2g \
-    --conf spark.executor.instances=2 \
+    --conf spark.executor.instances=1 \
     --conf spark.executor.memory=3584m \
     --conf spark.kubernetes.driver.request.cores=1 \
     --conf spark.kubernetes.driver.limit.cores=2 \
@@ -97,7 +97,7 @@ echo "    OUTPUT_PATH=${OUTPUT_PATH}"
     --conf spark.kubernetes.executor.node.selector.role=storage \
     --conf spark.kubernetes.driver.node.selector.role=storage \
     \
-    --conf spark.sql.shuffle.partitions=4 \
+    --conf spark.sql.shuffle.partitions=2 \
     --conf spark.sql.adaptive.enabled=true \
     --conf spark.sql.adaptive.coalescePartitions.enabled=true \
     \

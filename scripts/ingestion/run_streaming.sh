@@ -103,7 +103,7 @@ submit_streaming_job() {
     \
     --conf spark.driver.memory=1g \
     --conf spark.executor.instances=2 \
-    --conf spark.executor.memory=1536m \
+    --conf spark.executor.memory=2g \
     --conf spark.kubernetes.driver.request.cores=0.5 \
     --conf spark.kubernetes.driver.limit.cores=1 \
     --conf spark.kubernetes.executor.request.cores=0.5 \

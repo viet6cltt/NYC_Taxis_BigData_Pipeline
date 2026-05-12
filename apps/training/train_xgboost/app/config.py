@@ -23,6 +23,8 @@ TEST_SIZE      = float(os.getenv("TEST_SIZE", "0.2"))
 RANDOM_STATE   = int(os.getenv("RANDOM_STATE", "42"))
 PROMOTE_THRESHOLD_R2 = float(os.getenv("PROMOTE_THRESHOLD_R2", "0.7"))
 XGB_NUM_WORKERS = int(os.getenv("XGB_NUM_WORKERS", "2"))
+SPLIT_STRATEGY = os.getenv("SPLIT_STRATEGY", "random").strip().lower()
+TIME_SPLIT_MONTH = os.getenv("TIME_SPLIT_MONTH", "2024-11")
 
 # Features used (must match Gold schema from feature_engineering/app/transform.py)
 FEATURE_COLS = [
