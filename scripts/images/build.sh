@@ -2,42 +2,71 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APPS_DIR="$(cd "${SCRIPT_DIR}/../../apps" && pwd)" # go to apps directory
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+ENV_FILE="${REPO_ROOT}/.env"
+
+if [ -f "$ENV_FILE" ]; then
+    source "$ENV_FILE"
+fi
+
+REGISTRY="${REGISTRY:-localhost:5000}"
+TAG="${TAG:-v1.0}"
+TARGET="${1:-all}"
+
+APPS_DIR="$(cd "${SCRIPT_DIR}/../../apps" && pwd)"
 cd "${APPS_DIR}"
 
-TARGET=${1:-all} 
+build_and_push() {
+    local image_name="$1"
+    local dockerfile="$2"
+    local image="${REGISTRY}/${image_name}:${TAG}"
+
+    echo "--- Building ${image} ---"
+    docker build -t "${image}" -f "${dockerfile}" .
+
+    echo "--- Pushing ${image} ---"
+    docker push "${image}"
+}
 
 build_batch() {
-    echo "--- Building Batch Image ---"
-    docker build -t nyc-taxi-batch:v1 -f ingestion/batch/historical_to_bronze/Dockerfile .
+    build_and_push "nyc-taxi-batch" "ingestion/batch/historical_to_bronze/Dockerfile"
 }
 
 build_replay() {
-    echo "--- Building Streaming Replay Image ---"
-    docker build -t nyc-taxi-replay:v1 -f ingestion/streaming/replay_producer/Dockerfile .
+    build_and_push "nyc-taxi-replay" "ingestion/streaming/replay_producer/Dockerfile"
 }
 
 build_streaming_consumer() {
-    echo "--- Building Streaming Consumer Image ---"
-    docker build -t nyc-taxi-streaming-consumer:v1 -f ingestion/streaming/kafka_to_bronze/Dockerfile .
+    build_and_push "nyc-taxi-streaming-consumer" "ingestion/streaming/kafka_to_bronze/Dockerfile"
 }
 
 build_silver_consumer() {
-    echo "--- Building Silver Consumer Image ---"
-    docker build -t nyc-taxi-silver-consumer:v1 -f processing/bronze_to_silver/Dockerfile .
+    build_and_push "nyc-taxi-silver-consumer" "processing/bronze_to_silver/Dockerfile"
 }
 
-if [ "$TARGET" == "batch" ]; then
-    build_batch
-elif [ "$TARGET" == "replay" ]; then
-    build_replay
-elif [ "$TARGET" == "bronze_consumer" ]; then
-    build_streaming_consumer
-elif [ "$TARGET" == "silver_consumer" ]; then
-    build_silver_consumer
-else
-    build_batch
-    build_replay
-    build_streaming_consumer
-    build_silver_consumer
-fi
+case "$TARGET" in
+    all)
+        build_batch
+        build_replay
+        build_streaming_consumer
+        build_silver_consumer
+        ;;
+    batch)
+        build_batch
+        ;;
+    replay)
+        build_replay
+        ;;
+    bronze_consumer)
+        build_streaming_consumer
+        ;;
+    silver_consumer)
+        build_silver_consumer
+        ;;
+    *)
+        echo "Usage: $0 [all|batch|replay|bronze_consumer|silver_consumer]"
+        exit 1
+        ;;
+esac
+
+echo "=== Image build completed: target=${TARGET}, registry=${REGISTRY}, tag=${TAG} ==="

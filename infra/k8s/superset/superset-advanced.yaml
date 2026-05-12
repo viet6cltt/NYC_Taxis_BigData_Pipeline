@@ -1,0 +1,149 @@
+---
+# Optional: Advanced Redis for Caching & Task Queue
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-superset
+  namespace: lakehouse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-superset
+  template:
+    metadata:
+      labels:
+        app: redis-superset
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+      volumes:
+        - name: redis-data
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-superset
+  namespace: lakehouse
+spec:
+  selector:
+    app: redis-superset
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+  clusterIP: None
+
+---
+# Optional: Celery Worker for async tasks
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset-worker
+  namespace: lakehouse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superset-worker
+  template:
+    metadata:
+      labels:
+        app: superset-worker
+    spec:
+      containers:
+        - name: superset-worker
+          image: apache/superset:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - celery
+            - worker
+            - --app=superset.tasks.celery_app:app
+            - -l
+            - info
+            - -c
+            - "4"
+          env:
+            - name: SQLALCHEMY_DATABASE_URI
+              value: "postgresql://postgres:postgres@postgres-superset:5432/superset"
+            - name: REDIS_HOST
+              value: "redis-superset"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: SUPERSET_ENV
+              value: "production"
+            - name: FLASK_ENV
+              value: "production"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+---
+# Optional: Celery Beat for scheduled tasks
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset-beat
+  namespace: lakehouse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superset-beat
+  template:
+    metadata:
+      labels:
+        app: superset-beat
+    spec:
+      containers:
+        - name: superset-beat
+          image: apache/superset:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - celery
+            - beat
+            - --app=superset.tasks.celery_app:app
+            - -l
+            - info
+          env:
+            - name: SQLALCHEMY_DATABASE_URI
+              value: "postgresql://postgres:postgres@postgres-superset:5432/superset"
+            - name: REDIS_HOST
+              value: "redis-superset"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: SUPERSET_ENV
+              value: "production"
+            - name: FLASK_ENV
+              value: "production"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

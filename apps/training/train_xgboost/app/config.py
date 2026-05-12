@@ -11,7 +11,7 @@ os.environ.setdefault("AWS_ACCESS_KEY_ID", MINIO_ACCESS_KEY)
 os.environ.setdefault("AWS_SECRET_ACCESS_KEY", MINIO_SECRET_KEY)
 
 # Data paths
-GOLD_FEATURES_PATH = os.getenv("GOLD_FEATURES_PATH", "s3a://lakehouse/gold/nyc-taxi/features")
+GOLD_FEATURES_PATH = os.getenv("GOLD_FEATURES_PATH", "s3a://lakehouse/gold/ml/features")
 
 # MLflow
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.mlflow.svc.cluster.local:5000")
@@ -23,13 +23,15 @@ TEST_SIZE      = float(os.getenv("TEST_SIZE", "0.2"))
 RANDOM_STATE   = int(os.getenv("RANDOM_STATE", "42"))
 PROMOTE_THRESHOLD_R2 = float(os.getenv("PROMOTE_THRESHOLD_R2", "0.7"))
 XGB_NUM_WORKERS = int(os.getenv("XGB_NUM_WORKERS", "2"))
+SPLIT_STRATEGY = os.getenv("SPLIT_STRATEGY", "random").strip().lower()
+TIME_SPLIT_MONTH = os.getenv("TIME_SPLIT_MONTH", "2024-11")
 
 # Features used (must match Gold schema from feature_engineering/app/transform.py)
 FEATURE_COLS = [
     "passenger_count",
-    "trip_distance",
-    "trip_duration_seconds",
-    "speed",
+    "estimated_trip_distance",
+    "estimated_trip_duration_seconds",
+    "estimated_speed",
     "pickup_hour",
     "pickup_day_of_week",
     "is_weekend",

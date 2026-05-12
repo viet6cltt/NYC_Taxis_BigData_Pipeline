@@ -14,7 +14,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import MODEL_NAME, MODEL_STAGE, FEATURE_COLS
+from app.config import (
+    FEATURE_COLS,
+    MODEL_NAME,
+    MODEL_STAGE,
+    N_LOCATION_CLUSTERS,
+    N_TEMPORAL_CLUSTERS,
+)
 from app.model import load_model, get_model, get_model_version
 from app.schemas import TripRequest, PredictionResponse, HealthResponse
 
@@ -62,15 +68,16 @@ def _build_features(req: TripRequest) -> pd.DataFrame:
     dow  = req.pickup_day_of_week
     pu   = req.pulocation_id or 0
     do_  = req.dolocation_id or 0
-    dur  = req.trip_duration_seconds
+    dur  = req.estimated_trip_duration_seconds
+    temporal_bucket_size = max(1, 24 // N_TEMPORAL_CLUSTERS)
 
-    speed = (req.trip_distance / (dur / 3600.0)) if dur > 0 else 0.0
+    speed = (req.estimated_trip_distance / (dur / 3600.0)) if dur > 0 else 0.0
 
     features = {
         "passenger_count":       req.passenger_count,
-        "trip_distance":         req.trip_distance,
-        "trip_duration_seconds": dur,
-        "speed":                 speed,
+        "estimated_trip_distance": req.estimated_trip_distance,
+        "estimated_trip_duration_seconds": dur,
+        "estimated_speed":       speed,
         "pickup_hour":           hour,
         "pickup_day_of_week":    dow,
         "is_weekend":            1 if dow in (5, 6) else 0,
@@ -79,8 +86,8 @@ def _build_features(req: TripRequest) -> pd.DataFrame:
         "day_sin":               math.sin(two_pi * dow  / 7.0),
         "day_cos":               math.cos(two_pi * dow  / 7.0),
         "distance_manhattan":    abs(do_ - pu),
-        "location_cluster":      (pu + do_) % 5,           # mirrors stream_predict proxy
-        "temporal_cluster":      hour // 6,                 # 4 time-of-day buckets
+        "location_cluster":      (pu + do_) % N_LOCATION_CLUSTERS,
+        "temporal_cluster":      hour // temporal_bucket_size,
     }
 
     return pd.DataFrame([features])[FEATURE_COLS]

@@ -33,14 +33,18 @@ spec:
               value: "minioadmin"
             - name: MINIO_SECRET_KEY
               value: "minioadmin"
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local:9092"
-            - name: KAFKA_TOPIC
-              value: "nyc-taxi-trips"
+            - name: SILVER_STARTED_PATH
+              value: "s3a://lakehouse/silver/nyc-taxi/trip_started"
+            - name: GOLD_ROUTE_ESTIMATES_PATH
+              value: "s3a://lakehouse/gold/ml/route_estimates"
             - name: GOLD_PREDICTIONS_PATH
-              value: "s3a://gold/predictions/"
+              value: "s3a://lakehouse/gold/ml/predictions"
             - name: CHECKPOINT_LOCATION
-              value: "s3a://gold/checkpoints/stream_predict/"
+              value: "s3a://lakehouse/_checkpoints/gold/ml/stream_predict"
+            - name: N_LOCATION_CLUSTERS
+              value: "5"
+            - name: N_TEMPORAL_CLUSTERS
+              value: "4"
           resources:
             requests:
               memory: "2Gi"

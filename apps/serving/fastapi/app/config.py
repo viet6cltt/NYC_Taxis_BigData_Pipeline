@@ -10,18 +10,22 @@ MINIO_ENDPOINT   = os.getenv("MINIO_ENDPOINT",   "http://minio-api.minio.svc.clu
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY",  "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY",  "minioadmin")
 
-GOLD_PREDICTIONS_PATH = os.getenv("GOLD_PREDICTIONS_PATH", "s3a://gold/predictions/")
+GOLD_PREDICTIONS_PATH = os.getenv("GOLD_PREDICTIONS_PATH", "s3a://lakehouse/gold/ml/predictions")
 
 # App
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("APP_PORT", "8000"))
 
+# Feature helper settings. Keep defaults aligned with feature_engineering.
+N_LOCATION_CLUSTERS = int(os.getenv("N_LOCATION_CLUSTERS", "5"))
+N_TEMPORAL_CLUSTERS = int(os.getenv("N_TEMPORAL_CLUSTERS", "4"))
+
 # Features (must match training)
 FEATURE_COLS = [
     "passenger_count",
-    "trip_distance",
-    "trip_duration_seconds",
-    "speed",
+    "estimated_trip_distance",
+    "estimated_trip_duration_seconds",
+    "estimated_speed",
     "pickup_hour",
     "pickup_day_of_week",
     "is_weekend",

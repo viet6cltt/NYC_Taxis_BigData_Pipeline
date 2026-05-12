@@ -13,8 +13,11 @@ def read_gold(spark: SparkSession) -> DataFrame:
     print(f"[train_xgboost] Reading Gold features from: {GOLD_FEATURES_PATH}")
     spark_df = spark.read.format("delta").load(GOLD_FEATURES_PATH)
 
+    metadata_cols = [name for name in ["year_month"] if name in spark_df.columns]
     cols_needed = FEATURE_COLS + [TARGET_COL]
     selected_df = spark_df.select(*cols_needed)
+    if metadata_cols:
+        selected_df = spark_df.select(*cols_needed, *metadata_cols)
 
     cleaned_df = selected_df.dropna(subset=[TARGET_COL])
     for name in cols_needed:

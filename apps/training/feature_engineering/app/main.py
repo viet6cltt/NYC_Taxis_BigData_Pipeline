@@ -1,11 +1,29 @@
 from pyspark.sql import SparkSession
 
 from app.config import (
-    MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY,
+    GOLD_JOB,
+    MINIO_ENDPOINT,
+    MINIO_ACCESS_KEY,
+    MINIO_SECRET_KEY,
 )
-from app.reader import read_silver
-from app.transform import transform
-from app.writer import write_gold
+from app.reader import (
+    read_prediction_actuals,
+    read_predictions,
+    read_route_estimates,
+    read_silver_completed,
+)
+from app.transform import (
+    build_model_quality_daily,
+    build_prediction_actuals,
+    build_route_estimates,
+    build_training_features,
+)
+from app.writer import (
+    write_features,
+    write_model_quality_daily,
+    write_prediction_actuals,
+    write_route_estimates,
+)
 
 
 def build_spark_session() -> SparkSession:
@@ -31,13 +49,35 @@ def build_spark_session() -> SparkSession:
 
 
 def main() -> None:
-    print("=== [feature_engineering] Silver → Gold Feature Engineering ===")
+    print(f"=== [feature_engineering] Gold job: {GOLD_JOB} ===")
     spark = build_spark_session()
 
     try:
-        silver_df = read_silver(spark)
-        gold_df   = transform(silver_df)
-        write_gold(gold_df)
+        if GOLD_JOB == "route_estimates":
+            completed_df = read_silver_completed(spark)
+            route_estimates_df = build_route_estimates(completed_df)
+            write_route_estimates(route_estimates_df)
+
+        elif GOLD_JOB == "features":
+            completed_df = read_silver_completed(spark)
+            route_estimates_df = read_route_estimates(spark)
+            features_df = build_training_features(completed_df, route_estimates_df)
+            write_features(features_df)
+
+        elif GOLD_JOB == "prediction_actuals":
+            predictions_df = read_predictions(spark)
+            completed_df = read_silver_completed(spark)
+            prediction_actuals_df = build_prediction_actuals(predictions_df, completed_df)
+            write_prediction_actuals(prediction_actuals_df)
+
+        elif GOLD_JOB == "model_quality_daily":
+            prediction_actuals_df = read_prediction_actuals(spark)
+            quality_df = build_model_quality_daily(prediction_actuals_df)
+            write_model_quality_daily(quality_df)
+
+        else:
+            raise ValueError(f"Unsupported GOLD_JOB: {GOLD_JOB}")
+
         print("=== [feature_engineering] Done ===")
     finally:
         spark.stop()

@@ -32,6 +32,11 @@ MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.c
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 
+# Historical input / Bronze output
+STORAGE_PATH="${STORAGE_PATH:-/data/yellow_data}"
+YEAR="${YEAR:-2024}"
+OUTPUT_PATH="${OUTPUT_PATH:-s3a://lakehouse/bronze/nyc-taxi/trip_completed}"
+
 # Kiểm tra và tải Spark client nếu máy local chưa có
 if [ ! -d "$SPARK_DIR" ]; then
     echo "--- Không tìm thấy Spark ${SPARK_VERSION}. Đang tải... ---"
@@ -45,6 +50,9 @@ else
 fi
 
 echo "--- Đang submit batch job lên Kubernetes ---"
+echo "    STORAGE_PATH=${STORAGE_PATH}"
+echo "    YEAR=${YEAR}"
+echo "    OUTPUT_PATH=${OUTPUT_PATH}"
 
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
@@ -52,7 +60,7 @@ echo "--- Đang submit batch job lên Kubernetes ---"
     --name nyc-taxi-historical-to-bronze \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
     --conf spark.kubernetes.container.image="${REGISTRY}/${IMAGE}" \
-    --conf spark.kubernetes.container.image.pullPolicy=IfNotPresent \
+    --conf spark.kubernetes.container.image.pullPolicy=Always \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
     --conf spark.kubernetes.authenticate.caCertFile="" \
     --conf spark.kubernetes.authenticate.submission.caCertFile="" \
@@ -65,6 +73,9 @@ echo "--- Đang submit batch job lên Kubernetes ---"
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.executorEnv.PYTHONPATH="/opt/spark/work-dir" \
+    --conf spark.kubernetes.driverEnv.STORAGE_PATH="$STORAGE_PATH" \
+    --conf spark.kubernetes.driverEnv.YEAR="$YEAR" \
+    --conf spark.kubernetes.driverEnv.OUTPUT_PATH="$OUTPUT_PATH" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
     --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
     \
@@ -77,14 +88,16 @@ echo "--- Đang submit batch job lên Kubernetes ---"
     --conf spark.hadoop.fs.s3a.attempts.maximum=3 \
     \
     --conf spark.driver.memory=2g \
-    --conf spark.executor.instances=2 \
-    --conf spark.executor.memory=4g \
+    --conf spark.executor.instances=1 \
+    --conf spark.executor.memory=3584m \
     --conf spark.kubernetes.driver.request.cores=1 \
     --conf spark.kubernetes.driver.limit.cores=2 \
     --conf spark.kubernetes.executor.request.cores=1 \
     --conf spark.kubernetes.executor.limit.cores=2 \
+    --conf spark.kubernetes.executor.node.selector.role=storage \
+    --conf spark.kubernetes.driver.node.selector.role=storage \
     \
-    --conf spark.sql.shuffle.partitions=4 \
+    --conf spark.sql.shuffle.partitions=2 \
     --conf spark.sql.adaptive.enabled=true \
     --conf spark.sql.adaptive.coalescePartitions.enabled=true \
     \

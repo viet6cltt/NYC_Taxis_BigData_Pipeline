@@ -130,19 +130,46 @@ def train_and_log(gold_df: DataFrame) -> None:
         # -------------------------------------------------------------------
         train_predictions = spark_model.transform(train_df)
         test_predictions = spark_model.transform(test_df)
+        
+        print("[train_xgboost] Train prediction samples")
+        train_predictions.select(
+            TARGET_COL,
+            PREDICTION_COL
+        ).show(10, truncate=False)
+
+        print("[train_xgboost] Test prediction samples")
+        test_predictions.select(
+            TARGET_COL,
+            PREDICTION_COL
+        ).show(10, truncate=False)
+        
         train_metrics = _compute_metrics(train_predictions)
         test_metrics = _compute_metrics(test_predictions)
 
         mlflow.log_metric("train_r2",   train_metrics["r2"])
+        mlflow.log_metric("train_r2",   train_metrics["r2"])
+        mlflow.log_metric("train_rmse", train_metrics["rmse"])
+        mlflow.log_metric("train_mae",  train_metrics["mae"])
+
         mlflow.log_metric("test_r2",    test_metrics["r2"])
         mlflow.log_metric("test_rmse",  test_metrics["rmse"])
         mlflow.log_metric("test_mae",   test_metrics["mae"])
 
         print("[train_xgboost] Metrics:")
-        print(f"  Train R²:  {train_metrics['r2']:.4f}")
-        print(f"  Test  R²:  {test_metrics['r2']:.4f}")
-        print(f"  Test RMSE: {test_metrics['rmse']:.4f}")
-        print(f"  Test MAE:  {test_metrics['mae']:.4f}")
+
+        print(
+            f"  Train -> "
+            f"R²={train_metrics['r2']:.4f}  "
+            f"RMSE={train_metrics['rmse']:.4f}  "
+            f"MAE={train_metrics['mae']:.4f}"
+        )
+
+        print(
+            f"  Test  -> "
+            f"R²={test_metrics['r2']:.4f}  "
+            f"RMSE={test_metrics['rmse']:.4f}  "
+            f"MAE={test_metrics['mae']:.4f}"
+        )
 
         # Feature importance artifact
         importance_df = pd.DataFrame({

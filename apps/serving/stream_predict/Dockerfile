@@ -14,21 +14,13 @@ RUN pip install --no-cache-dir \
 WORKDIR /opt/spark/work-dir
 
 # Spark runtime dependencies used by app/main.py:
-#   - Kafka source
-#   - from_avro
 #   - Delta Lake on S3A/MinIO
 ADD https://repo1.maven.org/maven2/io/delta/delta-spark_2.13/4.0.0/delta-spark_2.13-4.0.0.jar /opt/spark/jars/
 ADD https://repo1.maven.org/maven2/io/delta/delta-storage/4.0.0/delta-storage-4.0.0.jar /opt/spark/jars/
 ADD https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.0/hadoop-aws-3.4.0.jar /opt/spark/jars/
 ADD https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.23.19/bundle-2.23.19.jar /opt/spark/jars/
-ADD https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/4.0.2/spark-sql-kafka-0-10_2.13-4.0.2.jar /opt/spark/jars/
-ADD https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.13/4.0.2/spark-token-provider-kafka-0-10_2.13-4.0.2.jar /opt/spark/jars/
-ADD https://repo1.maven.org/maven2/org/apache/spark/spark-avro_2.13/4.0.2/spark-avro_2.13-4.0.2.jar /opt/spark/jars/
-ADD https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.9.0/kafka-clients-3.9.0.jar /opt/spark/jars/
-ADD https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/2.12.0/commons-pool2-2.12.0.jar /opt/spark/jars/
 
 COPY app/ ./app/
-COPY schemas/ ./schemas/
 
 RUN chmod 644 /opt/spark/jars/*.jar
 

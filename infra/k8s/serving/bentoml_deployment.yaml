@@ -1,0 +1,61 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyc-taxi-bentoml
+  namespace: spark-operator
+  labels:
+    app: nyc-taxi-bentoml
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nyc-taxi-bentoml
+  template:
+    metadata:
+      labels:
+        app: nyc-taxi-bentoml
+    spec:
+      containers:
+        - name: bentoml
+          image: 100.76.120.58:5000/nyc-taxi-bentoml:v1.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow.mlflow.svc.cluster.local:5000"
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: "http://minio-api.minio.svc.cluster.local:9000"
+            - name: AWS_ACCESS_KEY_ID
+              value: "minioadmin"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "minioadmin"
+            - name: MODEL_NAME
+              value: "XGB_NYC_Fare"
+            - name: MODEL_ALIAS
+              value: "production"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyc-taxi-bentoml
+  namespace: spark-operator
+  labels:
+    app: nyc-taxi-bentoml
+spec:
+  type: ClusterIP
+  selector:
+    app: nyc-taxi-bentoml
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

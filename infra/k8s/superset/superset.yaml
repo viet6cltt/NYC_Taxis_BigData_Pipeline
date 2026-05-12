@@ -1,0 +1,464 @@
+---
+# ============================================================
+# PostgreSQL — Superset metadata store
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-superset
+  namespace: lakehouse
+  labels:
+    app: postgres-superset
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-superset
+  template:
+    metadata:
+      labels:
+        app: postgres-superset
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "superset"
+            - name: POSTGRES_PASSWORD
+              value: "superset"
+            - name: POSTGRES_DB
+              value: "superset"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "superset", "-d", "superset"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "superset", "-d", "superset"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: postgres-data
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-superset
+  namespace: lakehouse
+spec:
+  selector:
+    app: postgres-superset
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  clusterIP: None
+
+---
+# ============================================================
+# Superset config — superset_config.py được mount vào container
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: superset-config
+  namespace: lakehouse
+data:
+  superset_config.py: |
+    import os
+
+    # Database metadata
+    SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://superset:superset@postgres-superset:5432/superset"
+
+    # Secret key — đổi trong production
+    SECRET_KEY = os.getenv("SUPERSET_SECRET_KEY", "nyc-taxi-superset-secret-2024-change-me")
+
+    # Tắt load examples để khởi động nhanh hơn
+    SUPERSET_LOAD_EXAMPLES = False
+
+    # Cho phép tất cả origins (dev mode)
+    WTF_CSRF_ENABLED = False
+    TALISMAN_ENABLED = False
+
+    # Feature flags
+    FEATURE_FLAGS = {
+        "ENABLE_TEMPLATE_PROCESSING": True,
+        "DASHBOARD_NATIVE_FILTERS": True,
+        "DASHBOARD_CROSS_FILTERS": True,
+        "DASHBOARD_NATIVE_FILTERS_SET": True,
+        "ALERT_REPORTS": False,
+    }
+
+    # Cache (dùng SimpleCache cho dev, Redis cho production)
+    CACHE_CONFIG = {
+        "CACHE_TYPE": "SimpleCache",
+        "CACHE_DEFAULT_TIMEOUT": 300,
+    }
+
+    # Row limit
+    ROW_LIMIT = 100000
+    SQL_MAX_ROW = 100000
+
+    # Timeout cho queries
+    SQLLAB_TIMEOUT = 300
+    SUPERSET_WEBSERVER_TIMEOUT = 300
+
+---
+# ============================================================
+# Superset Deployment
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset
+  namespace: lakehouse
+  labels:
+    app: superset
+    component: bi-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superset
+  template:
+    metadata:
+      labels:
+        app: superset
+        component: bi-dashboard
+    spec:
+      initContainers:
+        # Bước 1: Chờ PostgreSQL sẵn sàng
+        - name: wait-for-postgres
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for postgres-superset:5432..."
+              until nc -z postgres-superset 5432; do
+                echo "  postgres not ready, retrying in 3s..."
+                sleep 3
+              done
+              echo "PostgreSQL is ready!"
+
+        # Bước 2: Chạy db upgrade + tạo admin user
+        - name: superset-init
+          image: apache/superset:4.1.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SUPERSET_CONFIG_PATH
+              value: /app/superset_config.py
+            - name: SUPERSET_SECRET_KEY
+              value: "nyc-taxi-superset-secret-2024-change-me"
+            - name: PYTHONPATH
+              value: /app
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "[init] Running database migrations..."
+              superset db upgrade
+
+              echo "[init] Creating admin user..."
+              superset fab create-admin \
+                --username admin \
+                --firstname Admin \
+                --lastname User \
+                --email admin@nyctaxi.local \
+                --password admin || echo "[init] Admin user already exists, skipping."
+
+              echo "[init] Initializing Superset roles..."
+              superset init
+
+              echo "[init] ✓ Superset initialization complete!"
+          volumeMounts:
+            - name: superset-config
+              mountPath: /app/superset_config.py
+              subPath: superset_config.py
+
+      containers:
+        - name: superset
+          image: apache/superset:4.1.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8088
+              name: http
+          env:
+            - name: SUPERSET_CONFIG_PATH
+              value: /app/superset_config.py
+            - name: SUPERSET_SECRET_KEY
+              value: "nyc-taxi-superset-secret-2024-change-me"
+            - name: PYTHONPATH
+              value: /app
+            # Trino connection info (dùng trong setup script)
+            - name: TRINO_HOST
+              value: "trino.lakehouse.svc.cluster.local"
+            - name: TRINO_PORT
+              value: "8080"
+          command:
+            - /bin/bash
+            - -c
+            - |
+              # Cài thêm trino driver nếu chưa có
+              pip install --quiet trino sqlalchemy-trino 2>/dev/null || true
+              # Khởi động Superset
+              superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger
+          volumeMounts:
+            - name: superset-config
+              mountPath: /app/superset_config.py
+              subPath: superset_config.py
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8088
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8088
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: superset-config
+          configMap:
+            name: superset-config
+
+---
+# ClusterIP — truy cập nội bộ
+apiVersion: v1
+kind: Service
+metadata:
+  name: superset
+  namespace: lakehouse
+spec:
+  selector:
+    app: superset
+  ports:
+    - name: http
+      port: 8088
+      targetPort: 8088
+
+---
+# NodePort — port-forward hoặc truy cập từ ngoài cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: superset-nodeport
+  namespace: lakehouse
+spec:
+  type: NodePort
+  selector:
+    app: superset
+  ports:
+    - name: http
+      port: 8088
+      targetPort: 8088
+      nodePort: 30088
+
+---
+# ============================================================
+# Job: Thêm Trino database connection vào Superset
+# Chạy sau khi Superset đã sẵn sàng
+# ============================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: superset-add-trino-db
+  namespace: lakehouse
+  labels:
+    app: superset-add-trino-db
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: superset-add-trino-db
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-superset
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Superset on port 8088..."
+              until nc -z superset 8088; do
+                echo "  superset not ready, retrying in 5s..."
+                sleep 5
+              done
+              # Thêm 10s để Superset hoàn toàn sẵn sàng
+              sleep 10
+              echo "Superset is ready!"
+      containers:
+        - name: add-trino-connection
+          image: apache/superset:4.1.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SUPERSET_CONFIG_PATH
+              value: /app/superset_config.py
+            - name: SUPERSET_SECRET_KEY
+              value: "nyc-taxi-superset-secret-2024-change-me"
+            - name: PYTHONPATH
+              value: /app
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+
+              # Cài trino driver
+              pip install --quiet trino sqlalchemy-trino 2>/dev/null || true
+
+              python3 << 'PYEOF'
+              import os
+              import sys
+              import time
+
+              # Thêm Trino database connection qua Superset API
+              import urllib.request
+              import urllib.parse
+              import json
+              import base64
+
+              SUPERSET_URL = "http://superset:8088"
+              ADMIN_USER = "admin"
+              ADMIN_PASS = "admin"
+
+              def api_call(method, path, data=None, token=None):
+                  url = f"{SUPERSET_URL}{path}"
+                  headers = {"Content-Type": "application/json"}
+                  if token:
+                      headers["Authorization"] = f"Bearer {token}"
+                  body = json.dumps(data).encode() if data else None
+                  req = urllib.request.Request(url, data=body, headers=headers, method=method)
+                  try:
+                      with urllib.request.urlopen(req, timeout=30) as resp:
+                          return json.loads(resp.read())
+                  except urllib.error.HTTPError as e:
+                      body = e.read().decode()
+                      print(f"  HTTP {e.code}: {body[:200]}")
+                      return None
+
+              # 1. Lấy CSRF token
+              print("[1] Getting CSRF token...")
+              csrf_resp = api_call("GET", "/api/v1/security/csrf_token/")
+              if not csrf_resp:
+                  print("  Could not get CSRF token, trying login directly...")
+
+              # 2. Login để lấy JWT token
+              print("[2] Logging in as admin...")
+              for attempt in range(10):
+                  login_resp = api_call("POST", "/api/v1/security/login", {
+                      "username": ADMIN_USER,
+                      "password": ADMIN_PASS,
+                      "provider": "db",
+                      "refresh": True
+                  })
+                  if login_resp and "access_token" in login_resp:
+                      break
+                  print(f"  Attempt {attempt+1}/10 failed, retrying in 5s...")
+                  time.sleep(5)
+              else:
+                  print("  ERROR: Could not login to Superset!")
+                  sys.exit(1)
+
+              token = login_resp["access_token"]
+              print(f"  ✓ Logged in, token obtained")
+
+              # 3. Kiểm tra xem Trino DB đã tồn tại chưa
+              print("[3] Checking existing databases...")
+              dbs_resp = api_call("GET", "/api/v1/database/?q=(filters:!((col:database_name,opr:eq,val:'Trino - NYC Taxi Gold')))", token=token)
+              if dbs_resp and dbs_resp.get("count", 0) > 0:
+                  print("  ✓ Trino database connection already exists, skipping.")
+                  sys.exit(0)
+
+              # 4. Tạo Trino database connection
+              print("[4] Creating Trino database connection...")
+              # SQLAlchemy URI cho Trino: trino://<user>@<host>:<port>/<catalog>
+              trino_uri = "trino://trino@trino.lakehouse.svc.cluster.local:8080/hive"
+
+              db_payload = {
+                  "database_name": "Trino - NYC Taxi Gold",
+                  "sqlalchemy_uri": trino_uri,
+                  "expose_in_sqllab": True,
+                  "allow_run_async": False,
+                  "allow_ctas": False,
+                  "allow_cvas": False,
+                  "allow_dml": False,
+                  "force_ctas_schema": None,
+                  "extra": json.dumps({
+                      "engine_params": {
+                          "connect_args": {
+                              "http_scheme": "http",
+                              "verify": False
+                          }
+                      },
+                      "metadata_params": {},
+                      "schemas_allowed_for_file_upload": [],
+                      "cost_estimate_enabled": False
+                  }),
+                  "masked_encrypted_extra": None,
+                  "server_cert": None,
+              }
+
+              create_resp = api_call("POST", "/api/v1/database/", db_payload, token=token)
+              if create_resp and "id" in create_resp:
+                  db_id = create_resp["id"]
+                  print(f"  ✓ Trino database connection created (id={db_id})")
+              else:
+                  print(f"  WARNING: Could not create via API. Please add manually in Superset UI.")
+                  print(f"  URI: {trino_uri}")
+                  sys.exit(0)
+
+              # 5. Test connection
+              print("[5] Testing Trino connection...")
+              test_resp = api_call("POST", f"/api/v1/database/{db_id}/test_connection/", {}, token=token)
+              if test_resp:
+                  print(f"  ✓ Connection test result: {test_resp}")
+              else:
+                  print("  WARNING: Connection test failed (Trino may not be ready yet)")
+
+              print("")
+              print("✅ Superset → Trino setup complete!")
+              print("   Login: http://localhost:8088  (admin / admin)")
+              print("   SQL Lab → Database: 'Trino - NYC Taxi Gold'")
+              print("   Schema: gold  →  Tables: features, predictions")
+              PYEOF
+          volumeMounts:
+            - name: superset-config
+              mountPath: /app/superset_config.py
+              subPath: superset_config.py
+      volumes:
+        - name: superset-config
+          configMap:
+            name: superset-config

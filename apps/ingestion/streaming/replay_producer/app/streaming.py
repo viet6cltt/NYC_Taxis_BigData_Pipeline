@@ -1,8 +1,9 @@
 from app.kafka_producer import KafkaProducer
 from app.avro_serializer import AvroSerializer
-from app.event_builder import build_trip_event
+from app.event_builder import build_trip_completed_event, build_trip_started_event
 from config import (
-    KAFKA_TOPIC,
+    KAFKA_COMPLETED_TOPIC,
+    KAFKA_STARTED_TOPIC,
     BOOTSTRAP_SERVERS,
     STREAMING_SPEED_MULTIPLIER,
     STREAMING_BATCH_SIZE,
@@ -14,12 +15,17 @@ from config import (
 from common.constants import INGEST_MODE_STREAMING
 
 from datetime import datetime
+import heapq
 import time
 import os 
 import glob
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
+
+
+EVENT_KIND_STARTED = "started"
+EVENT_KIND_COMPLETED = "completed"
 
 
 def iter_parquet_files(data_dir: str, year: str):
@@ -99,9 +105,32 @@ def iter_streaming_events(data_dir: str, year: str, read_batch_size: int):
             f"rows_before={table.num_rows}, rows_after={sorted_table.num_rows}"
         )
 
+        completed_heap = []
+        completed_seq = 0
+
+        def emit_completed_until(cutoff_ts):
+            while completed_heap and completed_heap[0][0] <= cutoff_ts:
+                completed_ts, _, completed_row = heapq.heappop(completed_heap)
+                yield completed_row, file_name, EVENT_KIND_COMPLETED, completed_ts
+
         for record_batch in sorted_table.to_batches(max_chunksize=read_batch_size):
             for row in record_batch.to_pylist():
-                yield row, file_name
+                pickup_ts = normalize_event_ts(row.get("tpep_pickup_datetime"))
+                dropoff_ts = normalize_event_ts(row.get("tpep_dropoff_datetime"))
+
+                if pickup_ts is not None:
+                    yield from emit_completed_until(pickup_ts)
+                    yield row, file_name, EVENT_KIND_STARTED, pickup_ts
+                else:
+                    yield row, file_name, EVENT_KIND_STARTED, pickup_ts
+
+                if dropoff_ts is not None:
+                    heapq.heappush(completed_heap, (dropoff_ts, completed_seq, row))
+                    completed_seq += 1
+
+        while completed_heap:
+            completed_ts, _, completed_row = heapq.heappop(completed_heap)
+            yield completed_row, file_name, EVENT_KIND_COMPLETED, completed_ts
 
 def run_streaming():
     # File validation
@@ -120,7 +149,8 @@ def run_streaming():
     expected_year = int(YEAR)
     print(
         f"[streaming] Start replay year={YEAR}, files={len(files)}, "
-        f"topic={KAFKA_TOPIC}, speed_multiplier={STREAMING_SPEED_MULTIPLIER}, "
+        f"started_topic={KAFKA_STARTED_TOPIC}, completed_topic={KAFKA_COMPLETED_TOPIC}, "
+        f"speed_multiplier={STREAMING_SPEED_MULTIPLIER}, "
         f"flush_every={STREAMING_BATCH_SIZE}"
     )
     
@@ -129,70 +159,89 @@ def run_streaming():
             sent = 0
             skipped_bad_ts = 0
             buffered = 0
+            sent_started = 0
+            sent_completed = 0
             # Lưu event time hợp lệ gần nhất để tính sleep cho event tiếp theo.
             prev_event_ts = None
             
-            for row, source_file in iter_streaming_events(
+            for row, source_file, event_kind, current_event_ts in iter_streaming_events(
                 DATA_DIR,
                 YEAR,
                 STREAMING_BATCH_SIZE,
             ):
-                raw_ts = row.get("tpep_pickup_datetime")
-                current_event_ts = normalize_event_ts(raw_ts)
-
                 if not is_valid_event_ts(current_event_ts, expected_year):
                     print(
-                        f"[streaming][WARN] Invalid event time={raw_ts} "
+                        f"[streaming][WARN] Invalid {event_kind} event time={current_event_ts} "
                         f"(file={source_file})"
                     )
                     # Bỏ qua event có timestamp không hợp lệ hoặc không đúng năm, nhưng vẫn tiếp tục replay các event khác.
                     skipped_bad_ts += 1
                     continue
 
-                if current_event_ts is not None:
-                    sleep_seconds = compute_sleep_seconds(
-                        prev_event_ts,
-                        current_event_ts,
-                        STREAMING_SPEED_MULTIPLIER,
-                        STREAMING_MAX_SLEEP_SECONDS,
-                    )
+                sleep_seconds = compute_sleep_seconds(
+                    prev_event_ts,
+                    current_event_ts,
+                    STREAMING_SPEED_MULTIPLIER,
+                    STREAMING_MAX_SLEEP_SECONDS,
+                )
 
-                    if sleep_seconds > 0:
-                        time.sleep(sleep_seconds)
+                if sleep_seconds > 0:
+                    time.sleep(sleep_seconds)
 
                 # Serializer lo phần metadata và chuyển giá trị về dạng Avro bytes.
-                event = serializer.serialize(
-                    build_trip_event(
+                event_record = (
+                    build_trip_started_event(
+                        row,
+                        ingest_mode=INGEST_MODE_STREAMING,
+                        source_file=source_file,
+                    )
+                    if event_kind == EVENT_KIND_STARTED
+                    else build_trip_completed_event(
                         row,
                         ingest_mode=INGEST_MODE_STREAMING,
                         source_file=source_file,
                     )
                 )
+                event = serializer.serialize(event_record)
+                topic = (
+                    KAFKA_STARTED_TOPIC
+                    if event_kind == EVENT_KIND_STARTED
+                    else KAFKA_COMPLETED_TOPIC
+                )
+                trip_id = event_record["metadata"]["trip_id"]
 
-                producer.send(KAFKA_TOPIC, value=event)
+                producer.send(topic, key=trip_id.encode("utf-8"), value=event)
                 sent += 1
                 buffered += 1
+                if event_kind == EVENT_KIND_STARTED:
+                    sent_started += 1
+                else:
+                    sent_completed += 1
 
                 # Flush theo lô nhỏ để giữ throughput ổn mà không dồn quá nhiều message trong bộ đệm.
                 if buffered >= STREAMING_BATCH_SIZE:
                     producer.flush()
                     print(
-                        f"[streaming] Sent={sent}, "
+                        f"[streaming] Sent={sent} "
+                        f"(started={sent_started}, completed={sent_completed}), "
                         f"bad_ts={skipped_bad_ts}, "
                         f"last_valid_ts={prev_event_ts}"
                     )
-                    print(f"[streaming] Progress: {sent} events. Current simulation time: {current_event_ts}")
+                    print(
+                        f"[streaming] Progress: {sent} events. "
+                        f"kind={event_kind}, simulation_time={current_event_ts}"
+                    )
                     buffered = 0
 
-                if current_event_ts is not None:
-                    prev_event_ts = current_event_ts
+                prev_event_ts = current_event_ts
 
             if buffered > 0:
                 # Flush phần còn lại ở cuối vòng replay.
                 producer.flush()
 
             print(
-                f"[streaming] Replay completed. Total sent={sent}, "
+                f"[streaming] Replay completed. Total sent={sent} "
+                f"(started={sent_started}, completed={sent_completed}), "
                 f"invalid_ts={skipped_bad_ts}"
             )
 

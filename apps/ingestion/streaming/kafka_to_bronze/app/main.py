@@ -3,10 +3,17 @@ from pyspark.sql import SparkSession
 from pyspark.sql.avro.functions import from_avro
 from pyspark.sql.functions import col
 from app.config import (
-    KAFKA_TOPIC, OUTPUT_PATH, KAFKA_BOOTSTRAP_SERVERS, CHECKPOINT_LOCATION
+    AVRO_SCHEMA_PATH,
+    CHECKPOINT_LOCATION,
+    EVENT_KIND,
+    KAFKA_BOOTSTRAP_SERVERS,
+    KAFKA_TOPIC,
+    OUTPUT_PATH,
+    TRIGGER_INTERVAL,
 )
 from app.transform import transform
-from app.writer import write_to_bronze
+
+
 def build_spark_session() -> SparkSession:
     spark = (
         SparkSession.builder
@@ -36,7 +43,7 @@ def main():
     # =========================
     # Đọc stream từ Kafka
     # =========================
-    print("--- Reading from kafka ---")
+    print(f"--- Reading {EVENT_KIND} events from kafka topic={KAFKA_TOPIC} ---")
     kafka_df = (
         spark.readStream
         .format("kafka")
@@ -48,7 +55,7 @@ def main():
     )
     
     # Read avro schema
-    avro_schema_str = load_avro_schema("schemas/taxi_trip_event.avsc")
+    avro_schema_str = load_avro_schema(AVRO_SCHEMA_PATH)
     
     print("--- Decoding avro ---")
     # =========================
@@ -67,9 +74,12 @@ def main():
         "event.payload.*"
     )
     
-    bronze_df = transform(flat_df)
+    bronze_df = transform(flat_df, EVENT_KIND)
     
-    print("--- Writing to Bronze ---")
+    print(
+        f"--- Writing {EVENT_KIND} events to Bronze path={OUTPUT_PATH}, "
+        f"checkpoint={CHECKPOINT_LOCATION} ---"
+    )
     # =========================
     # Ghi xuống BRONZE 
     # =========================
@@ -79,7 +89,7 @@ def main():
         .outputMode("append")
         .option("path", OUTPUT_PATH)
         .option("checkpointLocation", CHECKPOINT_LOCATION)
-        .trigger(processingTime="30 seconds")
+        .trigger(processingTime=TRIGGER_INTERVAL)
         .start()
     )
 
@@ -88,5 +98,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
