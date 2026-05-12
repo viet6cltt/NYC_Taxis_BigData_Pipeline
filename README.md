@@ -24,10 +24,10 @@ The **NYC Taxis BigData Pipeline** is a comprehensive, scalable data engineering
               │                                                                     │
               │  [TRAINING — Batch/Scheduled]      [SERVING — Always-on]           │
               │                                                                     │
-              │  feature_engineering               Kafka (new trip events)          │
-              │  Silver → Gold features                   ↓                        │
+              │  feature_engineering               Silver trip_started stream       │
+              │  route_estimates + features               ↓                        │
               │        ↓                           stream_predict                  │
-              │  train_xgboost                     Spark Streaming + XGBoost       │
+              │  train_xgboost                     route lookup + XGBoost          │
               │  XGBoost + MLflow                         ↓                        │
               │        ↓                           Gold/predictions (Delta)         │
               │  MLflow Model Registry ──────────►        ↓                        │
@@ -39,10 +39,10 @@ The **NYC Taxis BigData Pipeline** is a comprehensive, scalable data engineering
 
 | Layer | MinIO Path | Description |
 |---|---|---|
-| **Bronze** | `s3a://bronze/` | Raw events, Avro-decoded, no transformation |
-| **Silver** | `s3a://silver/trips/` | Cleaned, validated, partitioned by `year_month` |
-| **Gold (Features)** | `s3a://gold/features/` | Feature-engineered table ready for training |
-| **Gold (Predictions)** | `s3a://gold/predictions/` | Real-time XGBoost predictions + model lineage |
+| **Bronze** | `s3a://lakehouse/bronze/nyc-taxi/*` | Raw started/completed events, Avro-decoded |
+| **Silver** | `s3a://lakehouse/silver/nyc-taxi/*` | Clean started/completed tables + lifecycle state |
+| **Gold (Features)** | `s3a://lakehouse/gold/ml/features` | Training features with estimated distance/duration |
+| **Gold (Predictions)** | `s3a://lakehouse/gold/ml/predictions` | Real-time XGBoost prediction log + feature snapshot |
 
 ## Technology Stack
 
@@ -76,7 +76,7 @@ NYC_Taxis_BigData_Pipeline/
 │   │   ├── feature_engineering/          # Spark batch: Silver → Gold features
 │   │   └── train_xgboost/               # Train XGBoost + register in MLflow
 │   └── serving/
-│       ├── stream_predict/               # Spark Streaming: Kafka → XGBoost → Gold
+│       ├── stream_predict/               # Spark Streaming: Silver started → XGBoost → Gold
 │       └── fastapi/                      # FastAPI REST API: POST /predict
 ├── infra/k8s/
 │   ├── common/                           # Namespaces, RBAC, NFS PV/PVCs
@@ -124,8 +124,9 @@ bash scripts/processing/run_silver.sh
 
 ### 5. Run ML Training Pipeline
 ```bash
-# Feature engineering: Silver → Gold
-bash scripts/training/run_feature_engineering.sh
+# Build route estimates and training features
+bash scripts/training/run_feature_engineering.sh route_estimates
+bash scripts/training/run_feature_engineering.sh features
 
 # Train XGBoost + register in MLflow Registry
 bash scripts/training/run_training.sh
@@ -136,7 +137,7 @@ bash scripts/training/run_training.sh
 # Deploy FastAPI prediction server
 kubectl apply -f infra/k8s/serving/fastapi_deployment.yaml
 
-# Start Spark Streaming inference (Kafka → XGBoost → Gold/predictions)
+# Start Spark Streaming inference (Silver started → route lookup → Gold predictions)
 bash scripts/serving/run_stream_predict.sh
 ```
 
@@ -146,8 +147,8 @@ curl -X POST http://<fastapi-service>:8000/predict \
   -H "Content-Type: application/json" \
   -d '{
     "passenger_count": 2,
-    "trip_distance": 3.5,
-    "trip_duration_seconds": 900,
+    "estimated_trip_distance": 3.5,
+    "estimated_trip_duration_seconds": 900,
     "pickup_hour": 14,
     "pickup_day_of_week": 2,
     "pulocation_id": 161,
@@ -162,7 +163,7 @@ curl -X POST http://<fastapi-service>:8000/predict \
 - **Features** (14):
   - Temporal: `pickup_hour`, `pickup_day_of_week`, `is_weekend`
   - Cyclical: `hour_sin`, `hour_cos`, `day_sin`, `day_cos`
-  - Trip metrics: `passenger_count`, `trip_distance`, `trip_duration_seconds`, `speed`
+  - Trip metrics: `passenger_count`, `estimated_trip_distance`, `estimated_trip_duration_seconds`, `estimated_speed`
   - Geo: `distance_manhattan`, `location_cluster`, `temporal_cluster`
 - **Tracking**: MLflow — all runs, metrics, artifacts, and model versions logged
 - **Auto-promotion**: Model is promoted to `Production` stage when Test R² ≥ 0.70

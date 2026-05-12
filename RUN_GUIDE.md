@@ -75,11 +75,12 @@ Chúng ta có một file script tổng hợp chạy cục bộ (kết nối vớ
    python3 scripts/run_pipeline_local.py
    ```
 
-2. Các bước script này thực hiện:
-   - **Step 1 (Bronze):** Đọc file parquet raw từ `/data/yellow_data/2024`, map schema chuẩn và lưu thành Delta Table tại `s3a://bronze/trips/`.
-   - **Step 2 (Silver):** Đọc Bronze, lọc các dữ liệu ngoại lai (giá cước âm, quãng đường bất thường), tính `trip_duration_seconds`, lưu vào `s3a://silver/trips/`.
-   - **Step 3 (Gold):** Đọc Silver, tạo ra các Features (sine/cosine time, khoảng cách Manhattan, cluster heuristics), lưu vào `s3a://gold/features/`.
-   - **Step 4 (ML Training):** Dùng XGBoost để huấn luyện mô hình dự đoán giá cước (`fare_amount`). Lưu model artifacts lên **MLflow**.
+2. Các bước chính hiện tại:
+   - **Bronze:** Raw started/completed events ở `s3a://lakehouse/bronze/nyc-taxi/*`.
+   - **Silver:** Clean started/completed + lifecycle ở `s3a://lakehouse/silver/nyc-taxi/*`.
+   - **Gold route estimates:** `bash scripts/training/run_feature_engineering.sh route_estimates`.
+   - **Gold features:** `bash scripts/training/run_feature_engineering.sh features`.
+   - **ML Training:** Dùng XGBoost để huấn luyện mô hình dự đoán giá cước (`fare_amount`). Lưu model artifacts lên **MLflow**.
 
 3. Sau khi chạy xong, hãy mở `http://localhost:5000` để xem kết quả Model XGBoost (R², MAE, RMSE) và check model đã được gán nhãn `production`.
 
@@ -90,13 +91,10 @@ Chúng ta có một file script tổng hợp chạy cục bộ (kết nối vớ
 Sau khi model đã sẵn sàng trên MLflow, bạn có thể triển khai hệ thống dự đoán theo thời gian thực (Real-time Streaming) và API.
 
 ### 4.1. Khởi chạy Spark Streaming Inference Job
-Job này sẽ lắng nghe Kafka topic, nhận dữ liệu chuyến đi mới, áp dụng model MLflow và ghi kết quả (Prediction) ra Delta Lake.
+Job này đọc Delta stream `silver/trip_started`, lookup `gold/ml/route_estimates`, áp dụng model MLflow và ghi prediction log ra Delta Lake.
 
 ```bash
-# Đảm bảo Spark có thể kết nối với Kafka trên K3s
-export KAFKA_BOOTSTRAP_SERVERS="my-kafka-cluster-kafka-bootstrap.kafka.svc:9092"
-
-# Nộp job (Bạn có thể đóng gói vào Docker và chạy trên K8s thông qua script trong thư mục scripts/serving/)
+# Cần build route_estimates và train/promote model trước khi chạy job này
 bash scripts/serving/run_stream_predict.sh
 ```
 
@@ -114,7 +112,7 @@ AWS_ACCESS_KEY_ID=minioadmin \
 AWS_SECRET_ACCESS_KEY=minioadmin \
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
-> **Kiểm tra API:** Mở tài liệu API tại `http://localhost:8000/docs`. Bạn có thể gửi một POST request với thông tin điểm đón/trả và thời gian để nhận lại `predicted_fare_amount`.
+> **Kiểm tra API:** Mở tài liệu API tại `http://localhost:8000/docs`. Bạn có thể gửi một POST request với thông tin điểm đón/trả và thời gian để nhận lại `predicted_fare`.
 
 ---
 
