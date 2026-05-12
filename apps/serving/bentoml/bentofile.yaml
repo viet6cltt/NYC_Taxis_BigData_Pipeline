@@ -1,0 +1,14 @@
+service: "service:svc"
+labels:
+  owner: nyc-taxi
+  project: bigdata-pipeline
+include:
+  - "*.py"
+python:
+  packages:
+    - xgboost>=1.7.0
+    - pandas
+    - numpy
+    - pydantic
+    - bentoml
+    - mlflow
