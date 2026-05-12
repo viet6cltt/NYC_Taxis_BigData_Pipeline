@@ -1,4 +1,5 @@
 import math
+import os
 import numpy as np
 import pandas as pd
 import bentoml
@@ -6,7 +7,7 @@ from bentoml.io import JSON
 
 from schemas import TripRequest, PredictionResponse
 
-MODEL_NAME = "XGB_NYC_Fare"
+MODEL_NAME = os.getenv("MODEL_NAME", "XGB_NYC_Fare")
 
 # Create a runner from the locally stored BentoML model
 nyc_taxi_runner = bentoml.mlflow.get(MODEL_NAME).to_runner()
@@ -16,9 +17,9 @@ svc = bentoml.Service("nyc_taxi_fare_service", runners=[nyc_taxi_runner])
 
 FEATURE_COLS = [
     "passenger_count",
-    "trip_distance",
-    "trip_duration_seconds",
-    "speed",
+    "estimated_trip_distance",
+    "estimated_trip_duration_seconds",
+    "estimated_speed",
     "pickup_hour",
     "pickup_day_of_week",
     "is_weekend",
@@ -38,25 +39,25 @@ def _build_features(req: TripRequest) -> pd.DataFrame:
     dow  = req.pickup_day_of_week
     pu   = req.pulocation_id or 0
     do_  = req.dolocation_id or 0
-    dur  = req.trip_duration_seconds
+    dur  = req.estimated_trip_duration_seconds
 
-    speed = (req.trip_distance / (dur / 3600.0)) if dur > 0 else 0.0
+    speed = (req.estimated_trip_distance / (dur / 3600.0)) if dur > 0 else 0.0
 
     features = {
-        "passenger_count":       req.passenger_count,
-        "trip_distance":         req.trip_distance,
-        "trip_duration_seconds": dur,
-        "speed":                 speed,
-        "pickup_hour":           hour,
-        "pickup_day_of_week":    dow,
-        "is_weekend":            1 if dow in (5, 6) else 0,
-        "hour_sin":              math.sin(two_pi * hour / 24.0),
-        "hour_cos":              math.cos(two_pi * hour / 24.0),
-        "day_sin":               math.sin(two_pi * dow  / 7.0),
-        "day_cos":               math.cos(two_pi * dow  / 7.0),
-        "distance_manhattan":    abs(do_ - pu),
-        "location_cluster":      (pu + do_) % 5,
-        "temporal_cluster":      hour // 6,
+        "passenger_count": req.passenger_count,
+        "estimated_trip_distance": req.estimated_trip_distance,
+        "estimated_trip_duration_seconds": dur,
+        "estimated_speed": speed,
+        "pickup_hour": hour,
+        "pickup_day_of_week": dow,
+        "is_weekend": 1 if dow in (5, 6) else 0,
+        "hour_sin": math.sin(two_pi * hour / 24.0),
+        "hour_cos": math.cos(two_pi * hour / 24.0),
+        "day_sin": math.sin(two_pi * dow  / 7.0),
+        "day_cos": math.cos(two_pi * dow  / 7.0),
+        "distance_manhattan": abs(do_ - pu),
+        "location_cluster": (pu + do_) % 5,
+        "temporal_cluster": hour // 6,
     }
 
     X = pd.DataFrame([features])[FEATURE_COLS]
