@@ -60,5 +60,11 @@ MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 TRIGGER_INTERVAL = os.getenv("TRIGGER_INTERVAL", "30 seconds")
 WATERMARK_DELAY = os.getenv("WATERMARK_DELAY", "48 hours")
 LIFECYCLE_TTL_HOURS = int(os.getenv("LIFECYCLE_TTL_HOURS", "48"))
+LIFECYCLE_MERGE_ENABLED = os.getenv("LIFECYCLE_MERGE_ENABLED", "true").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "y",
+}
 
 STARTING_VERSION = os.getenv("STARTING_VERSION")

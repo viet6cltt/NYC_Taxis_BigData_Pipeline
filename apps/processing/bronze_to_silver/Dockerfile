@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --no-cache-dir --no-deps delta-spark==4.0.0
+
 WORKDIR /opt/spark/work-dir
 
 # Copy Spark JAR files to the appropriate directory
