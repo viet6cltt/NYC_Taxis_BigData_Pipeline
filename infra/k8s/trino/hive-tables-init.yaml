@@ -1,0 +1,132 @@
+---
+# Job này chạy sau khi Hive Metastore và Trino đã sẵn sàng.
+# Nó tạo các external tables trong Hive Metastore trỏ vào Parquet
+# trên MinIO, để Trino có thể query qua catalog `hive`.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hive-tables-init
+  namespace: lakehouse
+  labels:
+    app: hive-tables-init
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: hive-tables-init
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        # Chờ Hive Metastore sẵn sàng
+        - name: wait-for-hive
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Hive Metastore on port 9083..."
+              until nc -z hive-metastore 9083; do
+                echo "  hive-metastore not ready, retrying in 5s..."
+                sleep 5
+              done
+              echo "Hive Metastore is ready!"
+        # Chờ Trino sẵn sàng
+        - name: wait-for-trino
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Trino on port 8080..."
+              until nc -z trino 8080; do
+                echo "  trino not ready, retrying in 5s..."
+                sleep 5
+              done
+              echo "Trino is up, waiting 15s for catalog initialization..."
+              sleep 15
+              echo "Trino ready!"
+      containers:
+        - name: hive-init
+          image: trinodb/trino:480
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+
+              TRINO_CLI="/usr/lib/trino/bin/trino"
+              TRINO_SERVER="http://trino:8080"
+
+              run_sql() {
+                local sql="$1"
+                echo "  SQL: $sql"
+                echo "$sql" | $TRINO_CLI \
+                  --server "$TRINO_SERVER" \
+                  --user hive-init \
+                  --output-format TSV \
+                  --no-progress
+              }
+
+              echo "============================================"
+              echo " Hive Tables Init — NYC Taxi Gold Layer"
+              echo "============================================"
+
+              echo "[1/4] Creating schemas..."
+              run_sql "CREATE SCHEMA IF NOT EXISTS hive.gold   WITH (location = 's3a://gold/')"
+              run_sql "CREATE SCHEMA IF NOT EXISTS hive.silver WITH (location = 's3a://silver/')"
+              run_sql "CREATE SCHEMA IF NOT EXISTS hive.bronze WITH (location = 's3a://bronze/')"
+              echo "  ✓ Schemas created"
+
+              echo "[2/4] Creating hive.gold.features..."
+              run_sql "DROP TABLE IF EXISTS hive.gold.features"
+              run_sql "CREATE TABLE IF NOT EXISTS hive.gold.features (
+                trip_id VARCHAR, fare_amount DOUBLE,
+                passenger_count BIGINT, trip_distance DOUBLE, trip_duration_seconds BIGINT,
+                pulocation_id INTEGER, dolocation_id INTEGER,
+                pickup_hour INTEGER, pickup_day_of_week INTEGER, is_weekend INTEGER,
+                hour_sin DOUBLE, hour_cos DOUBLE, day_sin DOUBLE, day_cos DOUBLE,
+                distance_manhattan DOUBLE, speed DOUBLE,
+                location_cluster INTEGER, temporal_cluster INTEGER,
+                year_month VARCHAR
+              ) WITH (format = 'PARQUET', external_location = 's3a://gold/features/data/')"
+              echo "  ✓ hive.gold.features created"
+
+              echo "[3/4] Creating hive.gold.predictions..."
+              run_sql "DROP TABLE IF EXISTS hive.gold.predictions"
+              run_sql "CREATE TABLE IF NOT EXISTS hive.gold.predictions (
+                trip_id VARCHAR, passenger_count BIGINT, trip_distance DOUBLE,
+                trip_duration_seconds BIGINT, speed DOUBLE,
+                pickup_hour INTEGER, pickup_day_of_week INTEGER, is_weekend INTEGER,
+                hour_sin DOUBLE, hour_cos DOUBLE, day_sin DOUBLE, day_cos DOUBLE,
+                distance_manhattan DOUBLE, location_cluster INTEGER, temporal_cluster INTEGER,
+                predicted_fare DOUBLE, model_version VARCHAR,
+                prediction_timestamp TIMESTAMP, event_time TIMESTAMP
+              ) WITH (format = 'PARQUET', external_location = 's3a://gold/predictions/')"
+              echo "  ✓ hive.gold.predictions created"
+
+              echo "[4/4] Creating hive.silver.trips..."
+              run_sql "DROP TABLE IF EXISTS hive.silver.trips"
+              run_sql "CREATE TABLE IF NOT EXISTS hive.silver.trips (
+                trip_id VARCHAR, event_type VARCHAR, schema_version VARCHAR,
+                ingest_mode VARCHAR, ingest_timestamp TIMESTAMP, event_time TIMESTAMP,
+                trip_date VARCHAR, trip_hour INTEGER, vendor_id INTEGER,
+                pickup_datetime TIMESTAMP, dropoff_datetime TIMESTAMP,
+                passenger_count BIGINT, trip_distance DOUBLE, rate_code_id BIGINT,
+                store_and_fwd_flag VARCHAR, pulocation_id INTEGER, dolocation_id INTEGER,
+                payment_type INTEGER, payment_type_desc VARCHAR,
+                fare_amount DOUBLE, extra DOUBLE, mta_tax DOUBLE, tip_amount DOUBLE,
+                tolls_amount DOUBLE, improvement_surcharge DOUBLE, total_amount DOUBLE,
+                congestion_surcharge DOUBLE, airport_fee DOUBLE,
+                trip_duration_seconds BIGINT, year_month VARCHAR
+              ) WITH (format = 'PARQUET', external_location = 's3a://silver/trips/data/')"
+              echo "  ✓ hive.silver.trips created"
+
+              echo "============================================"
+              echo " Verification — listing tables"
+              echo "============================================"
+              run_sql "SHOW TABLES IN hive.gold"
+              run_sql "SHOW TABLES IN hive.silver"
+
+              echo "✅ All tables initialized successfully!"
