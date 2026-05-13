@@ -25,7 +25,7 @@ SPARK_URL="https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${
 # Kubernetes
 K8S_API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
 K8S_MASTER="k8s://${K8S_API_SERVER}"
-NAMESPACE="spark-operator"
+NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
 
 GOLD_JOB="${1:-features}"
@@ -46,10 +46,20 @@ IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-feature-engineering:v1.0"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
 SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-1g}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-2g}"
 SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-1}"
 N_LOCATION_CLUSTERS="${N_LOCATION_CLUSTERS:-5}"
 N_TEMPORAL_CLUSTERS="${N_TEMPORAL_CLUSTERS:-4}"
+MIN_TRIP_DISTANCE="${MIN_TRIP_DISTANCE:-0.05}"
+MAX_TRIP_DISTANCE="${MAX_TRIP_DISTANCE:-100.0}"
+MIN_TRIP_DURATION_SECONDS="${MIN_TRIP_DURATION_SECONDS:-60}"
+MAX_TRIP_DURATION_SECONDS="${MAX_TRIP_DURATION_SECONDS:-14400}"
+MIN_FARE_AMOUNT="${MIN_FARE_AMOUNT:-2.5}"
+MAX_FARE_AMOUNT="${MAX_FARE_AMOUNT:-300.0}"
+MAX_TOTAL_AMOUNT="${MAX_TOTAL_AMOUNT:-500.0}"
+MIN_AVG_SPEED_MPH="${MIN_AVG_SPEED_MPH:-1.0}"
+MAX_AVG_SPEED_MPH="${MAX_AVG_SPEED_MPH:-80.0}"
+MAX_PASSENGER_COUNT="${MAX_PASSENGER_COUNT:-6}"
 
 if [ ! -d "$SPARK_DIR" ]; then
     echo "--- Downloading Spark ${SPARK_VERSION} ---"
@@ -85,6 +95,16 @@ echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
     --conf spark.kubernetes.driverEnv.WRITE_MODE="$WRITE_MODE" \
     --conf spark.kubernetes.driverEnv.N_LOCATION_CLUSTERS="$N_LOCATION_CLUSTERS" \
     --conf spark.kubernetes.driverEnv.N_TEMPORAL_CLUSTERS="$N_TEMPORAL_CLUSTERS" \
+    --conf spark.kubernetes.driverEnv.MIN_TRIP_DISTANCE="$MIN_TRIP_DISTANCE" \
+    --conf spark.kubernetes.driverEnv.MAX_TRIP_DISTANCE="$MAX_TRIP_DISTANCE" \
+    --conf spark.kubernetes.driverEnv.MIN_TRIP_DURATION_SECONDS="$MIN_TRIP_DURATION_SECONDS" \
+    --conf spark.kubernetes.driverEnv.MAX_TRIP_DURATION_SECONDS="$MAX_TRIP_DURATION_SECONDS" \
+    --conf spark.kubernetes.driverEnv.MIN_FARE_AMOUNT="$MIN_FARE_AMOUNT" \
+    --conf spark.kubernetes.driverEnv.MAX_FARE_AMOUNT="$MAX_FARE_AMOUNT" \
+    --conf spark.kubernetes.driverEnv.MAX_TOTAL_AMOUNT="$MAX_TOTAL_AMOUNT" \
+    --conf spark.kubernetes.driverEnv.MIN_AVG_SPEED_MPH="$MIN_AVG_SPEED_MPH" \
+    --conf spark.kubernetes.driverEnv.MAX_AVG_SPEED_MPH="$MAX_AVG_SPEED_MPH" \
+    --conf spark.kubernetes.driverEnv.MAX_PASSENGER_COUNT="$MAX_PASSENGER_COUNT" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
     --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
     \

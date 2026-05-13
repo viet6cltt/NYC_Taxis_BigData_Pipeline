@@ -18,7 +18,7 @@ SPARK_URL="https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${
 # Dynamically get K8S_MASTER from kubectl to match kubeconfig exactly
 K8S_API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
 K8S_MASTER="k8s://${K8S_API_SERVER}"
-NAMESPACE="spark-operator"
+NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
 
 # Kafka / Bronze

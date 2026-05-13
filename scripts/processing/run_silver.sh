@@ -17,7 +17,7 @@ SPARK_URL="https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${
 # Kubernetes
 K8S_API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
 K8S_MASTER="k8s://${K8S_API_SERVER}"
-NAMESPACE="spark-operator"
+NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
 
 # Runtime
@@ -47,7 +47,7 @@ TMPDIR="${TMPDIR:-/data/tmp/silver}"
 S3A_BUFFER_DIR="${S3A_BUFFER_DIR:-/data/s3a-buffer/silver}"
 SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-1g}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-2g}"
 SPARK_SHUFFLE_PARTITIONS="${SPARK_SHUFFLE_PARTITIONS:-4}"
 
 # MinIO / Delta

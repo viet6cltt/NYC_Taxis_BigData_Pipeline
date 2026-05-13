@@ -37,7 +37,7 @@ data:
     hive.metastore=thrift
     hive.metastore.uri=thrift://hive-metastore.lakehouse.svc.cluster.local:9083
     fs.native-s3.enabled=true
-    s3.endpoint=http://minio-api.minio.svc.cluster.local:9000
+    s3.endpoint=http://minio-api.storage.svc.cluster.local:9000
     s3.region=us-east-1
     s3.path-style-access=true
     s3.aws-access-key=minioadmin
@@ -51,7 +51,7 @@ data:
     hive.metastore=thrift
     hive.metastore.uri=thrift://hive-metastore.lakehouse.svc.cluster.local:9083
     fs.native-s3.enabled=true
-    s3.endpoint=http://minio-api.minio.svc.cluster.local:9000
+    s3.endpoint=http://minio-api.storage.svc.cluster.local:9000
     s3.region=us-east-1
     s3.path-style-access=true
     s3.aws-access-key=minioadmin
@@ -66,7 +66,7 @@ data:
     iceberg.catalog.type=hive_metastore
     hive.metastore.uri=thrift://hive-metastore.lakehouse.svc.cluster.local:9083
     fs.native-s3.enabled=true
-    s3.endpoint=http://minio-api.minio.svc.cluster.local:9000
+    s3.endpoint=http://minio-api.storage.svc.cluster.local:9000
     s3.region=us-east-1
     s3.path-style-access=true
     s3.aws-access-key=minioadmin

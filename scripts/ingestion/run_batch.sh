@@ -19,7 +19,7 @@ SPARK_TGZ="${SPARK_DIR}.tgz"
 SPARK_URL="https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz"
 
 # Kubernetes
-NAMESPACE="spark-operator"
+NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
 
 # Image

@@ -6,7 +6,7 @@ MODEL_NAME          = os.getenv("MODEL_NAME",           "XGB_NYC_Fare")
 MODEL_STAGE         = os.getenv("MODEL_STAGE",          "Production")
 
 # MinIO (for reading predictions from Gold Delta Lake)
-MINIO_ENDPOINT   = os.getenv("MINIO_ENDPOINT",   "http://minio-api.minio.svc.cluster.local:9000")
+MINIO_ENDPOINT   = os.getenv("MINIO_ENDPOINT",   "http://minio-api.storage.svc.cluster.local:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY",  "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY",  "minioadmin")
 

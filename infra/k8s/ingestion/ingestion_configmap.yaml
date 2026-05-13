@@ -7,7 +7,7 @@ data:
   KAFKA_STARTED_TOPIC: "nyc-taxi-trip-started"
   KAFKA_COMPLETED_TOPIC: "nyc-taxi-trip-completed"
   KAFKA_BOOTSTRAP_SERVERS: "my-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
-  MINIO_ENDPOINT: "http://minio-api.minio.svc.cluster.local:9000"
+  MINIO_ENDPOINT: "http://minio-api.storage.svc.cluster.local:9000"
   RAW_PATH: "s3a://lakehouse/raw/yellow_data"
   BRONZE_STARTED_PATH: "s3a://lakehouse/bronze/nyc-taxi/trip_started"
   BRONZE_COMPLETED_PATH: "s3a://lakehouse/bronze/nyc-taxi/trip_completed"

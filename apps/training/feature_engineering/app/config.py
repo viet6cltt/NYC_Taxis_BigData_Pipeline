@@ -1,7 +1,7 @@
 import os
 
 # MinIO / S3
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio-api.minio.svc.cluster.local:9000")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio-api.storage.svc.cluster.local:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 
@@ -59,6 +59,19 @@ GOLD_MODEL_QUALITY_DAILY_PATH = os.getenv(
 # Lightweight deterministic cluster proxies used by training and serving.
 N_LOCATION_CLUSTERS = int(os.getenv("N_LOCATION_CLUSTERS", "5"))
 N_TEMPORAL_CLUSTERS = int(os.getenv("N_TEMPORAL_CLUSTERS", "4"))
+
+# ML training data quality filters. These are intentionally applied in Gold ML,
+# not Silver, so the cleaned event tables remain useful for audit/BI.
+MIN_TRIP_DISTANCE = float(os.getenv("MIN_TRIP_DISTANCE", "0.05"))
+MAX_TRIP_DISTANCE = float(os.getenv("MAX_TRIP_DISTANCE", "100.0"))
+MIN_TRIP_DURATION_SECONDS = int(os.getenv("MIN_TRIP_DURATION_SECONDS", "60"))
+MAX_TRIP_DURATION_SECONDS = int(os.getenv("MAX_TRIP_DURATION_SECONDS", "14400"))
+MIN_FARE_AMOUNT = float(os.getenv("MIN_FARE_AMOUNT", "2.5"))
+MAX_FARE_AMOUNT = float(os.getenv("MAX_FARE_AMOUNT", "300.0"))
+MAX_TOTAL_AMOUNT = float(os.getenv("MAX_TOTAL_AMOUNT", "500.0"))
+MIN_AVG_SPEED_MPH = float(os.getenv("MIN_AVG_SPEED_MPH", "1.0"))
+MAX_AVG_SPEED_MPH = float(os.getenv("MAX_AVG_SPEED_MPH", "80.0"))
+MAX_PASSENGER_COUNT = int(os.getenv("MAX_PASSENGER_COUNT", "6"))
 
 # Write mode
 WRITE_MODE = os.getenv("WRITE_MODE", "overwrite")  # overwrite | append

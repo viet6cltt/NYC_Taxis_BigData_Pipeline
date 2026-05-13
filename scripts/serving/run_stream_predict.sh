@@ -14,7 +14,7 @@ K8S_MASTER="k8s://${K8S_API_SERVER}"
 SPARK_VERSION="4.1.1"
 SPARK_DIR="$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3"
 
-NAMESPACE="spark-operator"
+NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-stream-predict:v1.0"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"

@@ -13,7 +13,7 @@ K8S_MASTER="k8s://${K8S_API_SERVER}"
 SPARK_VERSION="${SPARK_VERSION:-4.1.1}"
 SPARK_DIR="${SPARK_DIR:-$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3}"
 
-NAMESPACE="spark-operator"
+NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-train-xgboost:v1.0"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
@@ -28,10 +28,10 @@ SPLIT_STRATEGY="${SPLIT_STRATEGY:-random}"
 TIME_SPLIT_MONTH="${TIME_SPLIT_MONTH:-2024-11}"
 
 IMAGE_PULL_POLICY="${IMAGE_PULL_POLICY:-Always}"
-SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-4g}"
-SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-2}"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
+SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
 SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-3}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-8g}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-4g}"
 SPARK_EXECUTOR_DELETE_ON_TERMINATION="${SPARK_EXECUTOR_DELETE_ON_TERMINATION:-false}"
 
 echo "--- Submitting XGBoost Training job to Kubernetes ---"
@@ -81,7 +81,5 @@ echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES}
     --conf spark.executor.cores="$SPARK_EXECUTOR_CORES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.memory.fraction=0.8 \
-    --conf spark.kubernetes.driver.node.selector.workload=spark \
-    --conf spark.kubernetes.executor.node.selector.workload=spark \
     \
     "$APP_FILE"

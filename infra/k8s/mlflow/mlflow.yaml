@@ -28,7 +28,7 @@ spec:
             - containerPort: 5000
           env:
             - name: MLFLOW_S3_ENDPOINT_URL
-              value: "http://minio-api.minio.svc.cluster.local:9000"
+              value: "http://minio-api.storage.svc.cluster.local:9000"
             - name: AWS_ACCESS_KEY_ID
               value: "minioadmin"
             - name: AWS_SECRET_ACCESS_KEY
