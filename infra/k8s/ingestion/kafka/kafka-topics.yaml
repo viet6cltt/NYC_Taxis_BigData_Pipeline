@@ -2,7 +2,7 @@ apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
   name: nyc-taxi-trip-started
-  namespace: kafka
+  namespace: ingestion
   labels:
     strimzi.io/cluster: my-kafka-cluster
 spec:
@@ -16,7 +16,7 @@ apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
   name: nyc-taxi-trip-completed
-  namespace: kafka
+  namespace: ingestion
   labels:
     strimzi.io/cluster: my-kafka-cluster
 spec:

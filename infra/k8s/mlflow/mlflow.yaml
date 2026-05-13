@@ -1,11 +1,4 @@
----
-# Namespace
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: mlflow
 
----
 # MLflow Deployment
 # Uses MinIO as artifact store and SQLite (file-based) as backend for simplicity.
 # For production, replace SQLite with PostgreSQL.
@@ -13,7 +6,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mlflow
-  namespace: mlflow
+  namespace: mlops
   labels:
     app: mlflow
 spec:
@@ -35,7 +28,7 @@ spec:
             - containerPort: 5000
           env:
             - name: MLFLOW_S3_ENDPOINT_URL
-              value: "http://minio-api.minio.svc.cluster.local:9000"
+              value: "http://minio-api.storage.svc.cluster.local:9000"
             - name: AWS_ACCESS_KEY_ID
               value: "minioadmin"
             - name: AWS_SECRET_ACCESS_KEY
@@ -69,7 +62,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mlflow-pvc
-  namespace: mlflow
+  namespace: mlops
 spec:
   accessModes:
     - ReadWriteOnce
@@ -83,7 +76,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mlflow
-  namespace: mlflow
+  namespace: mlops
   labels:
     app: mlflow
 spec:
@@ -100,7 +93,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mlflow-nodeport
-  namespace: mlflow
+  namespace: mlops
   labels:
     app: mlflow
 spec:

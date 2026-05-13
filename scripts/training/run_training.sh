@@ -13,25 +13,25 @@ K8S_MASTER="k8s://${K8S_API_SERVER}"
 SPARK_VERSION="${SPARK_VERSION:-4.1.1}"
 SPARK_DIR="${SPARK_DIR:-$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3}"
 
-NAMESPACE="spark-operator"
+NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-train-xgboost:v1.0"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
 GOLD_FEATURES_PATH="${GOLD_FEATURES_PATH:-s3a://lakehouse/gold/ml/features}"
 
-MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.cluster.local:9000}"
+MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.storage.svc.cluster.local:9000}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
-MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://mlflow.mlflow.svc.cluster.local:5000}"
+MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://mlflow.mlops.svc.cluster.local:5000}"
 XGB_NUM_WORKERS="${XGB_NUM_WORKERS:-2}"
 SPLIT_STRATEGY="${SPLIT_STRATEGY:-random}"
 TIME_SPLIT_MONTH="${TIME_SPLIT_MONTH:-2024-11}"
 
 IMAGE_PULL_POLICY="${IMAGE_PULL_POLICY:-Always}"
-SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-4g}"
-SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-2}"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
+SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
 SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-3}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-8g}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-4g}"
 SPARK_EXECUTOR_DELETE_ON_TERMINATION="${SPARK_EXECUTOR_DELETE_ON_TERMINATION:-false}"
 
 echo "--- Submitting XGBoost Training job to Kubernetes ---"
@@ -81,7 +81,5 @@ echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES}
     --conf spark.executor.cores="$SPARK_EXECUTOR_CORES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.memory.fraction=0.8 \
-    --conf spark.kubernetes.driver.node.selector.workload=spark \
-    --conf spark.kubernetes.executor.node.selector.workload=spark \
     \
     "$APP_FILE"

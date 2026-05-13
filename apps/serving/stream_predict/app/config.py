@@ -1,7 +1,7 @@
 import os
 
 # MinIO / S3
-MINIO_ENDPOINT   = os.getenv("MINIO_ENDPOINT",   "http://minio-api.minio.svc.cluster.local:9000")
+MINIO_ENDPOINT   = os.getenv("MINIO_ENDPOINT",   "http://minio-api.storage.svc.cluster.local:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY",  "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY",  "minioadmin")
 
@@ -40,6 +40,13 @@ TRIGGER_INTERVAL = os.getenv("TRIGGER_INTERVAL", "30 seconds")
 # Feature helper settings. Keep defaults aligned with feature_engineering.
 N_LOCATION_CLUSTERS = int(os.getenv("N_LOCATION_CLUSTERS", "5"))
 N_TEMPORAL_CLUSTERS = int(os.getenv("N_TEMPORAL_CLUSTERS", "4"))
+MIN_TRIP_DISTANCE = float(os.getenv("MIN_TRIP_DISTANCE", "0.05"))
+MAX_TRIP_DISTANCE = float(os.getenv("MAX_TRIP_DISTANCE", "100.0"))
+MIN_TRIP_DURATION_SECONDS = int(os.getenv("MIN_TRIP_DURATION_SECONDS", "60"))
+MAX_TRIP_DURATION_SECONDS = int(os.getenv("MAX_TRIP_DURATION_SECONDS", "14400"))
+MIN_AVG_SPEED_MPH = float(os.getenv("MIN_AVG_SPEED_MPH", "1.0"))
+MAX_AVG_SPEED_MPH = float(os.getenv("MAX_AVG_SPEED_MPH", "80.0"))
+MAX_PASSENGER_COUNT = int(os.getenv("MAX_PASSENGER_COUNT", "6"))
 
 # Features (must match training)
 FEATURE_COLS = [

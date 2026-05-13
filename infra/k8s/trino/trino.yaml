@@ -9,11 +9,6 @@ data:
     node-scheduler.include-coordinator=true
     http-server.http.port=8080
     discovery.uri=http://localhost:8080
-    # Cho phép query không cần auth (dev mode)
-    http-server.authentication.type=PASSWORD
-    http-server.authentication.allow-insecure-over-http=true
-    # Tắt auth để dễ dùng trong dev
-    http-server.authentication.type=
   jvm.config: |
     -server
     -Xmx4G
@@ -29,20 +24,21 @@ data:
     node.id=trino-coordinator
     node.data-dir=/data/trino
   # -----------------------------------------------------------------------
-  # Catalog: delta — đọc Delta Lake tables trực tiếp từ MinIO qua Hive Metastore
-  # Dùng cho gold.features và gold.predictions
+  # Catalog: delta — đọc Delta Lake tables trực tiếp từ MinIO qua Hive Metastore.
+  # Dùng cho silver_nyc_taxi, gold_ml, gold_monitoring.
   # -----------------------------------------------------------------------
   delta.properties: |
     connector.name=delta_lake
     hive.metastore=thrift
     hive.metastore.uri=thrift://hive-metastore.lakehouse.svc.cluster.local:9083
     fs.native-s3.enabled=true
-    s3.endpoint=http://minio-api.minio.svc.cluster.local:9000
+    s3.endpoint=http://minio-api.storage.svc.cluster.local:9000
     s3.region=us-east-1
     s3.path-style-access=true
     s3.aws-access-key=minioadmin
     s3.aws-secret-key=minioadmin
     delta.enable-non-concurrent-writes=true
+    delta.register-table-procedure.enabled=true
   # -----------------------------------------------------------------------
   # Catalog: hive — fallback cho Parquet/ORC tables
   # -----------------------------------------------------------------------
@@ -51,13 +47,12 @@ data:
     hive.metastore=thrift
     hive.metastore.uri=thrift://hive-metastore.lakehouse.svc.cluster.local:9083
     fs.native-s3.enabled=true
-    s3.endpoint=http://minio-api.minio.svc.cluster.local:9000
+    s3.endpoint=http://minio-api.storage.svc.cluster.local:9000
     s3.region=us-east-1
     s3.path-style-access=true
     s3.aws-access-key=minioadmin
     s3.aws-secret-key=minioadmin
     hive.non-managed-table-writes-enabled=true
-    hive.allow-drop-table=true
   # -----------------------------------------------------------------------
   # Catalog: iceberg — cho Iceberg tables (nếu cần sau này)
   # -----------------------------------------------------------------------
@@ -66,7 +61,7 @@ data:
     iceberg.catalog.type=hive_metastore
     hive.metastore.uri=thrift://hive-metastore.lakehouse.svc.cluster.local:9083
     fs.native-s3.enabled=true
-    s3.endpoint=http://minio-api.minio.svc.cluster.local:9000
+    s3.endpoint=http://minio-api.storage.svc.cluster.local:9000
     s3.region=us-east-1
     s3.path-style-access=true
     s3.aws-access-key=minioadmin
@@ -91,6 +86,8 @@ spec:
         app: trino
         component: query-engine
     spec:
+      nodeSelector:
+         workload: spark
       containers:
         - name: trino
           image: trinodb/trino:480
@@ -119,10 +116,10 @@ spec:
               subPath: iceberg.properties
           resources:
             requests:
-              memory: "2Gi"
+              memory: "1Gi"
               cpu: "500m"
             limits:
-              memory: "5Gi"
+              memory: "3Gi"
               cpu: "2000m"
           livenessProbe:
             httpGet:
@@ -171,4 +168,4 @@ spec:
     - name: http
       port: 8080
       targetPort: 8080
-      nodePort: 30080
+      nodePort: 30005

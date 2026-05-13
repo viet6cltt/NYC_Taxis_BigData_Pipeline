@@ -4,9 +4,9 @@ USER root
 
 RUN pip install --no-cache-dir \
     mlflow==2.13.0 \
-    xgboost==2.0.3 \
-    scikit-learn==1.4.2 \
-    pandas==2.2.2 \
+    xgboost==3.2.0 \
+    scikit-learn==1.7.2 \
+    pandas==2.3.3 \
     numpy==1.26.4 \
     pyarrow==14.0.2 \
     boto3==1.34.69

@@ -22,8 +22,8 @@ HTTP_CODE=$(curl -s -o /tmp/db_resp.json -w "%{http_code}" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
-    "database_name": "Trino - NYC Taxi Gold",
-    "sqlalchemy_uri": "trino://trino@trino:8080/hive",
+    "database_name": "Trino - NYC Taxi Lakehouse",
+    "sqlalchemy_uri": "trino://trino@trino:8080/delta",
     "expose_in_sqllab": true,
     "allow_run_async": true,
     "allow_ctas": false,
@@ -48,12 +48,14 @@ echo " Superset:  http://localhost:8088  (admin/admin)"
 echo " Trino UI:  http://localhost:8080"
 echo " MinIO:     http://localhost:9001  (minioadmin/minioadmin)"
 echo ""
-echo " SQL Lab -> Database: Trino - NYC Taxi Gold"
-echo " Schema: gold  -> Tables: features, predictions"
-echo " Schema: silver -> Tables: trips"
+echo " SQL Lab -> Database: Trino - NYC Taxi Lakehouse"
+echo " Schema: silver_nyc_taxi -> trip_started, trip_completed, trip_lifecycle"
+echo " Schema: gold_ml -> route_estimates, features, predictions, prediction_actuals"
+echo " Schema: gold_monitoring -> model_quality_daily"
 echo ""
 echo " Sample query:"
 echo "   SELECT year_month, COUNT(*) AS trips, ROUND(AVG(fare_amount),2) AS avg_fare"
-echo "   FROM delta.gold.features"
+echo "   FROM delta.silver_nyc_taxi.trip_lifecycle"
+echo "   WHERE status = 'completed'"
 echo "   GROUP BY year_month ORDER BY year_month;"
 echo "============================================"

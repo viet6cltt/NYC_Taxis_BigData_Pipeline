@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # =============================================================================
-# setup_bi.sh — Deploy Trino + Superset BI stack cho NYC Taxi Gold Layer
+# setup_bi.sh — Deploy Trino + Superset BI stack cho NYC Taxi Lakehouse
 #
 # Thứ tự deploy:
 #   1. Hive Metastore (nếu chưa chạy)
 #   2. Trino query engine
-#   3. Hive tables init job (đăng ký Gold tables)
+#   3. Hive tables init job (đăng ký Delta Lakehouse tables)
 #   4. Superset BI dashboard
 #   5. Superset → Trino connection job
 #
@@ -96,9 +96,9 @@ kubectl apply -f "$ROOT_DIR/infra/k8s/trino/trino.yaml"
 wait_for_pod "app=trino" 180
 
 # =============================================================================
-# Bước 3: Hive Tables Init (đăng ký Gold tables)
+# Bước 3: Hive Tables Init (đăng ký Delta Lakehouse tables)
 # =============================================================================
-log "Step 3/5 — Registering Gold tables in Hive Metastore via Trino..."
+log "Step 3/5 — Registering Delta Lakehouse tables in Hive Metastore via Trino..."
 
 # Xóa job cũ nếu tồn tại (để chạy lại được)
 kubectl delete job hive-tables-init -n "$NAMESPACE" --ignore-not-found=true
@@ -124,7 +124,7 @@ log "Step 5/5 — Connecting Superset to Trino..."
 kubectl delete job superset-add-trino-db -n "$NAMESPACE" --ignore-not-found=true
 sleep 2
 
-# Job đã được apply cùng superset.yaml, chờ nó hoàn thành
+kubectl apply -f "$ROOT_DIR/infra/k8s/superset/superset.yaml"
 wait_for_job "superset-add-trino-db" 180
 
 # =============================================================================
@@ -146,12 +146,14 @@ echo ""
 echo "  Superset:  http://localhost:8088  (admin / admin)"
 echo "  Trino UI:  http://localhost:8080"
 echo ""
-echo "  SQL Lab → Database: 'Trino - NYC Taxi Gold'"
-echo "  Schema: gold  →  Tables: features, predictions"
-echo "  Schema: silver →  Tables: trips"
+echo "  SQL Lab → Database: 'Trino - NYC Taxi Lakehouse'"
+echo "  Schema: silver_nyc_taxi  → trip_started, trip_completed, trip_lifecycle"
+echo "  Schema: gold_ml          → route_estimates, features, predictions, prediction_actuals"
+echo "  Schema: gold_monitoring  → model_quality_daily"
 echo ""
 echo "  Ví dụ query:"
 echo "  SELECT year_month, COUNT(*) AS trips, AVG(fare_amount) AS avg_fare"
-echo "  FROM delta.gold.features"
+echo "  FROM delta.silver_nyc_taxi.trip_lifecycle"
+echo "  WHERE status = 'completed'"
 echo "  GROUP BY 1 ORDER BY 1;"
 echo ""

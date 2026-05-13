@@ -8,7 +8,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: minio
-  namespace: minio
+  namespace: storage
 type: Opaque
 stringData:
   MINIO_ROOT_USER: "minioadmin"
@@ -19,7 +19,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minio-headless
-  namespace: minio
+  namespace: storage
 spec:
   clusterIP: None
   selector:
@@ -35,7 +35,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minio-api
-  namespace: minio 
+  namespace: storage 
 spec:
   selector:
     app: minio-server
@@ -50,7 +50,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minio-api-nodeport
-  namespace: minio
+  namespace: storage
 spec:
   type: NodePort # Thay đổi từ ClusterIP sang NodePort
   ports:
@@ -65,7 +65,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minio-ui-nodeport
-  namespace: minio
+  namespace: storage
 spec:
   type: NodePort # Thay đổi từ ClusterIP sang NodePort
   ports:
@@ -80,7 +80,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minio-ui
-  namespace: minio
+  namespace: storage
 spec:
   selector:
     app: minio-server
@@ -95,7 +95,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: minio
-  namespace: minio
+  namespace: storage
 spec:
   serviceName: minio-headless
   replicas: 1
@@ -144,7 +144,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: minio
-  namespace: minio
+  namespace: storage
 spec:
   minAvailable: 1
   selector:

@@ -1,16 +1,50 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: spark-operator
+  name: lakehouse
   labels:
-    name: spark-operator
+    name: lakehouse
     env: development
 
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: nyc-taxi
+  name: ingestion
   labels:
-    name: nyc-taxi
+    name: ingestion
+    env: development
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage
+  labels:
+    name: lakehouse
+    env: development
+--- 
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mlops
+  labels:
+    name: mlops
+    env: development 
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    env: development    
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: serving
+  labels:
+    name: serving
     env: development

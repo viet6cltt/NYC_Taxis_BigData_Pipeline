@@ -13,7 +13,20 @@ import math
 from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as F
 
-from app.config import N_LOCATION_CLUSTERS, N_TEMPORAL_CLUSTERS
+from app.config import (
+    MAX_AVG_SPEED_MPH,
+    MAX_FARE_AMOUNT,
+    MAX_PASSENGER_COUNT,
+    MAX_TOTAL_AMOUNT,
+    MAX_TRIP_DISTANCE,
+    MAX_TRIP_DURATION_SECONDS,
+    MIN_AVG_SPEED_MPH,
+    MIN_FARE_AMOUNT,
+    MIN_TRIP_DISTANCE,
+    MIN_TRIP_DURATION_SECONDS,
+    N_LOCATION_CLUSTERS,
+    N_TEMPORAL_CLUSTERS,
+)
 
 
 FEATURE_COLS = [
@@ -93,14 +106,26 @@ def add_distance_and_cluster_features(df: DataFrame) -> DataFrame:
 
 
 def _valid_completed_trips(df: DataFrame) -> DataFrame:
+    duration_hours = F.col("trip_duration_seconds") / F.lit(3600.0)
+    avg_speed_mph = F.col("trip_distance") / duration_hours
     return (
         df
         .filter(F.col("trip_id").isNotNull())
         .filter(F.col("pickup_datetime").isNotNull())
+        .filter(F.col("dropoff_datetime").isNotNull())
         .filter(F.col("pulocation_id").isNotNull())
         .filter(F.col("dolocation_id").isNotNull())
-        .filter(F.col("trip_distance").isNotNull() & (F.col("trip_distance") > 0))
-        .filter(F.col("trip_duration_seconds").isNotNull() & (F.col("trip_duration_seconds") > 0))
+        .filter(F.col("passenger_count").isNotNull())
+        .filter((F.col("passenger_count") > 0) & (F.col("passenger_count") <= MAX_PASSENGER_COUNT))
+        .filter(F.col("trip_distance").isNotNull())
+        .filter(F.col("trip_distance").between(MIN_TRIP_DISTANCE, MAX_TRIP_DISTANCE))
+        .filter(F.col("trip_duration_seconds").isNotNull())
+        .filter(F.col("trip_duration_seconds").between(MIN_TRIP_DURATION_SECONDS, MAX_TRIP_DURATION_SECONDS))
+        .filter(avg_speed_mph.between(MIN_AVG_SPEED_MPH, MAX_AVG_SPEED_MPH))
+        .filter(F.col("fare_amount").isNotNull())
+        .filter(F.col("fare_amount").between(MIN_FARE_AMOUNT, MAX_FARE_AMOUNT))
+        .filter(F.col("total_amount").isNotNull())
+        .filter((F.col("total_amount") >= 0) & (F.col("total_amount") <= MAX_TOTAL_AMOUNT))
     )
 
 
@@ -279,7 +304,6 @@ def enrich_with_route_estimates(df: DataFrame, route_estimates_df: DataFrame) ->
 def build_training_features(completed_df: DataFrame, route_estimates_df: DataFrame) -> DataFrame:
     completed = (
         add_temporal_features(_valid_completed_trips(completed_df))
-        .filter(F.col("fare_amount").isNotNull() & (F.col("fare_amount") > 0))
         .withColumnRenamed("trip_distance", "actual_trip_distance")
         .withColumnRenamed("trip_duration_seconds", "actual_trip_duration_seconds")
     )
@@ -295,9 +319,10 @@ def build_training_features(completed_df: DataFrame, route_estimates_df: DataFra
     df = add_distance_and_cluster_features(df)
     df = df.filter(
         F.col("estimated_trip_distance").isNotNull()
-        & (F.col("estimated_trip_distance") > 0)
+        & F.col("estimated_trip_distance").between(MIN_TRIP_DISTANCE, MAX_TRIP_DISTANCE)
         & F.col("estimated_trip_duration_seconds").isNotNull()
-        & (F.col("estimated_trip_duration_seconds") > 0)
+        & F.col("estimated_trip_duration_seconds").between(MIN_TRIP_DURATION_SECONDS, MAX_TRIP_DURATION_SECONDS)
+        & F.col("estimated_speed").between(MIN_AVG_SPEED_MPH, MAX_AVG_SPEED_MPH)
     )
     return df.select(*TRAINING_FEATURE_COLUMNS)
 
@@ -319,6 +344,11 @@ def build_prediction_actuals(predictions_df: DataFrame, completed_df: DataFrame)
         completed_df
         .filter(F.col("trip_id").isNotNull())
         .filter(F.col("fare_amount").isNotNull())
+        .filter(F.col("fare_amount").between(MIN_FARE_AMOUNT, MAX_FARE_AMOUNT))
+        .filter(F.col("trip_distance").isNotNull())
+        .filter(F.col("trip_distance").between(MIN_TRIP_DISTANCE, MAX_TRIP_DISTANCE))
+        .filter(F.col("trip_duration_seconds").isNotNull())
+        .filter(F.col("trip_duration_seconds").between(MIN_TRIP_DURATION_SECONDS, MAX_TRIP_DURATION_SECONDS))
         .select(
             F.col("trip_id").alias("completed_trip_id"),
             F.col("event_id").alias("completed_event_id"),
@@ -333,6 +363,11 @@ def build_prediction_actuals(predictions_df: DataFrame, completed_df: DataFrame)
         )
     )
 
+    delay_seconds = (
+        F.unix_timestamp("actual_arrival_timestamp")
+        - F.unix_timestamp("prediction_timestamp")
+    )
+
     joined = (
         predictions
         .join(completed, predictions.trip_id == completed.completed_trip_id, "inner")
@@ -344,7 +379,7 @@ def build_prediction_actuals(predictions_df: DataFrame, completed_df: DataFrame)
             "label_delay_seconds",
             F.when(
                 F.col("prediction_timestamp").isNotNull() & F.col("actual_arrival_timestamp").isNotNull(),
-                F.unix_timestamp("actual_arrival_timestamp") - F.unix_timestamp("prediction_timestamp"),
+                F.when(delay_seconds >= 0, delay_seconds),
             ),
         )
         .withColumn("year_month", F.coalesce(F.col("year_month"), F.col("actual_year_month")))
@@ -387,7 +422,10 @@ def build_model_quality_daily(prediction_actuals_df: DataFrame) -> DataFrame:
     return (
         prediction_actuals_df
         .filter(F.col("actual_fare_amount").isNotNull())
-        .withColumn("metric_date", F.to_date(F.col("actual_arrival_timestamp")))
+        .withColumn(
+            "metric_date",
+            F.to_date(F.coalesce(F.col("dropoff_datetime"), F.col("actual_pickup_datetime"), F.col("actual_arrival_timestamp"))),
+        )
         .groupBy("metric_date", "model_name", "model_version")
         .agg(
             F.count(F.lit(1)).cast("long").alias("prediction_count"),

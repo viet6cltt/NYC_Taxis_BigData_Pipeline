@@ -14,15 +14,16 @@ K8S_MASTER="k8s://${K8S_API_SERVER}"
 SPARK_VERSION="4.1.1"
 SPARK_DIR="$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3"
 
-NAMESPACE="spark-operator"
+NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-stream-predict:v1.0"
+IMAGE_PULL_POLICY="${IMAGE_PULL_POLICY:-Always}"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
 
-MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.cluster.local:9000}"
+MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.storage.svc.cluster.local:9000}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
-MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://mlflow.mlflow.svc.cluster.local:5000}"
+MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-http://mlflow.mlops.svc.cluster.local:5000}"
 SILVER_STARTED_PATH="${SILVER_STARTED_PATH:-s3a://lakehouse/silver/nyc-taxi/trip_started}"
 GOLD_ROUTE_ESTIMATES_PATH="${GOLD_ROUTE_ESTIMATES_PATH:-s3a://lakehouse/gold/ml/route_estimates}"
 GOLD_PREDICTIONS_PATH="${GOLD_PREDICTIONS_PATH:-s3a://lakehouse/gold/ml/predictions}"
@@ -48,7 +49,7 @@ fi
     --name nyc-taxi-stream-predict \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
     --conf spark.kubernetes.container.image="$IMAGE" \
-    --conf spark.kubernetes.container.image.pullPolicy=IfNotPresent \
+    --conf spark.kubernetes.container.image.pullPolicy="$IMAGE_PULL_POLICY" \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
     \

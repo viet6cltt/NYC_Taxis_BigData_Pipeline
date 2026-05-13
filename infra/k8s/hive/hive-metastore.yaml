@@ -29,7 +29,7 @@ data:
     -Dhive.metastore.warehouse.dir=s3a://warehouse/iceberg
     -Ddatanucleus.schema.autoCreateAll=true
     -Dhive.metastore.schema.verification=false
-    -Dfs.s3a.endpoint=http://minio-api.minio.svc.cluster.local:9000
+    -Dfs.s3a.endpoint=http://minio-api.storage.svc.cluster.local:9000
     -Dfs.s3a.endpoint.region=us-east-1
     -Dfs.s3a.access.key=minioadmin
     -Dfs.s3a.secret.key=minioadmin
@@ -59,7 +59,7 @@ data:
       </property>
       <property>
         <name>fs.s3a.endpoint</name>
-        <value>http://minio-api.minio.svc.cluster.local:9000</value>
+        <value>http://minio-api.storage.svc.cluster.local:9000</value>
       </property>
       <property>
         <name>fs.s3a.endpoint.region</name>
@@ -114,15 +114,15 @@ spec:
             - -c
             - |
               set -e
-              until /usr/bin/mc alias set local http://minio-api.minio.svc.cluster.local:9000 minioadmin minioadmin; do
+              until /usr/bin/mc alias set local http://minio-api.storage.svc.cluster.local:9000 minioadmin minioadmin; do
                 echo "Waiting for MinIO API..."
                 sleep 3
               done
               /usr/bin/mc mb --ignore-existing local/warehouse
       containers:
         - name: hive-metastore
-          image: hive-metastore-s3a:3.1.3
-          imagePullPolicy: IfNotPresent
+          image: 100.76.120.58:5000/hive-metastore-s3a:3.1.3
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: hive-metastore-config

@@ -31,7 +31,7 @@ kubectl logs -n lakehouse -l app=superset -f
 
 # Xem init job
 kubectl get jobs -n lakehouse
-kubectl logs -n lakehouse job/superset-init-trino
+kubectl logs -n lakehouse job/superset-add-trino-db
 ```
 
 ---
@@ -82,7 +82,7 @@ SELECT 1 AS test_query
 2. Chọn database `trino`
 3. Chạy query:
    ```sql
-   SELECT * FROM iceberg.silver.trips LIMIT 10
+   SELECT * FROM delta.silver_nyc_taxi.trip_lifecycle WHERE status = 'completed' LIMIT 10
    ```
 4. Lưu lại thành **Dataset**
 
@@ -125,13 +125,13 @@ Sau khi connect, có thể query các tables từ Delta Lake:
 
 ```sql
 -- Bronze layer
-SELECT * FROM iceberg.bronze.trips LIMIT 5
+SELECT * FROM delta.bronze_nyc_taxi.trip_completed LIMIT 5
 
--- Silver layer
-SELECT * FROM iceberg.silver.trips LIMIT 5
+-- Silver lifecycle current-state table
+SELECT * FROM delta.silver_nyc_taxi.trip_lifecycle WHERE status = 'completed' LIMIT 5
 
 -- Gold layer
-SELECT * FROM iceberg.gold.features LIMIT 5
+SELECT * FROM delta.gold_ml.features LIMIT 5
 ```
 
 ---
@@ -161,12 +161,12 @@ kubectl apply -f infra/k8s/superset/superset.yaml
 ### Issue 3: Init Job không tạo connection
 ```bash
 # Xem logs của init job
-kubectl logs -n lakehouse job/superset-init-trino
+kubectl logs -n lakehouse job/superset-add-trino-db
 
 # Tạo connection thủ công qua UI
 # Admin Panel → Databases → + Database
 # Database: trino
-# SQLAlchemy URI: trino://trino.lakehouse.svc.cluster.local:8080/iceberg
+# SQLAlchemy URI: trino://trino.lakehouse.svc.cluster.local:8080/delta
 ```
 
 ---
@@ -206,4 +206,3 @@ File config: `infra/k8s/superset/superset.yaml`
 - [ ] Setup backup cho PostgreSQL metadata
 - [ ] Enable monitoring & logging
 - [ ] Cấu hình ingress thay vì LoadBalancer
-

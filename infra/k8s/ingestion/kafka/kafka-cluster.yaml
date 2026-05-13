@@ -2,7 +2,7 @@ apiVersion: kafka.strimzi.io/v1
 kind: KafkaNodePool
 metadata: 
   name: kafka-node
-  namespace: kafka
+  namespace: ingestion
   labels:
     strimzi.io/cluster: my-kafka-cluster
 spec: 
@@ -23,7 +23,7 @@ apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: my-kafka-cluster
-  namespace: kafka
+  namespace: ingestion
   annotations: 
     strimzi.io/node-pools: enabled
     strimzi.io/kraft: enabled

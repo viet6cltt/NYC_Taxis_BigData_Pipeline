@@ -174,6 +174,9 @@ spec:
             - -c
             - |
               set -e
+              echo "[init] Installing Python database drivers..."
+              pip install --quiet psycopg2-binary
+
               echo "[init] Running database migrations..."
               superset db upgrade
 
@@ -217,8 +220,8 @@ spec:
             - /bin/bash
             - -c
             - |
-              # Cài thêm trino driver nếu chưa có
-              pip install --quiet trino sqlalchemy-trino 2>/dev/null || true
+              # Cài thêm database drivers nếu chưa có
+              pip install --quiet psycopg2-binary trino sqlalchemy-trino
               # Khởi động Superset
               superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger
           volumeMounts:
@@ -336,8 +339,8 @@ spec:
             - |
               set -e
 
-              # Cài trino driver
-              pip install --quiet trino sqlalchemy-trino 2>/dev/null || true
+              # Cài database drivers
+              pip install --quiet psycopg2-binary trino sqlalchemy-trino
 
               python3 << 'PYEOF'
               import os
@@ -397,7 +400,8 @@ spec:
 
               # 3. Kiểm tra xem Trino DB đã tồn tại chưa
               print("[3] Checking existing databases...")
-              dbs_resp = api_call("GET", "/api/v1/database/?q=(filters:!((col:database_name,opr:eq,val:'Trino - NYC Taxi Gold')))", token=token)
+              db_filter = "(filters:!((col:database_name,opr:eq,val:'Trino - NYC Taxi Lakehouse')))"
+              dbs_resp = api_call("GET", f"/api/v1/database/?q={urllib.parse.quote(db_filter, safe='')}", token=token)
               if dbs_resp and dbs_resp.get("count", 0) > 0:
                   print("  ✓ Trino database connection already exists, skipping.")
                   sys.exit(0)
@@ -405,10 +409,10 @@ spec:
               # 4. Tạo Trino database connection
               print("[4] Creating Trino database connection...")
               # SQLAlchemy URI cho Trino: trino://<user>@<host>:<port>/<catalog>
-              trino_uri = "trino://trino@trino.lakehouse.svc.cluster.local:8080/hive"
+              trino_uri = "trino://trino@trino.lakehouse.svc.cluster.local:8080/delta"
 
               db_payload = {
-                  "database_name": "Trino - NYC Taxi Gold",
+                  "database_name": "Trino - NYC Taxi Lakehouse",
                   "sqlalchemy_uri": trino_uri,
                   "expose_in_sqllab": True,
                   "allow_run_async": False,
@@ -451,8 +455,8 @@ spec:
               print("")
               print("✅ Superset → Trino setup complete!")
               print("   Login: http://localhost:8088  (admin / admin)")
-              print("   SQL Lab → Database: 'Trino - NYC Taxi Gold'")
-              print("   Schema: gold  →  Tables: features, predictions")
+              print("   SQL Lab → Database: 'Trino - NYC Taxi Lakehouse'")
+              print("   Schemas: silver_nyc_taxi, gold_ml, gold_monitoring")
               PYEOF
           volumeMounts:
             - name: superset-config

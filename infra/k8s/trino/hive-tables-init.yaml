@@ -1,7 +1,6 @@
 ---
-# Job này chạy sau khi Hive Metastore và Trino đã sẵn sàng.
-# Nó tạo các external tables trong Hive Metastore trỏ vào Parquet
-# trên MinIO, để Trino có thể query qua catalog `hive`.
+# Register existing Delta Lake tables in Hive Metastore through Trino.
+# Spark remains the writer. Trino/Superset only query the registered metadata.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -18,7 +17,6 @@ spec:
     spec:
       restartPolicy: OnFailure
       initContainers:
-        # Chờ Hive Metastore sẵn sàng
         - name: wait-for-hive
           image: busybox:1.35
           command:
@@ -31,7 +29,6 @@ spec:
                 sleep 5
               done
               echo "Hive Metastore is ready!"
-        # Chờ Trino sẵn sàng
         - name: wait-for-trino
           image: busybox:1.35
           command:
@@ -45,7 +42,6 @@ spec:
               done
               echo "Trino is up, waiting 15s for catalog initialization..."
               sleep 15
-              echo "Trino ready!"
       containers:
         - name: hive-init
           image: trinodb/trino:480
@@ -54,10 +50,18 @@ spec:
             - /bin/bash
             - -c
             - |
-              set -e
+              set -euo pipefail
 
-              TRINO_CLI="/usr/lib/trino/bin/trino"
+              TRINO_CLI="$(command -v trino || true)"
               TRINO_SERVER="http://trino:8080"
+
+              if [ -z "$TRINO_CLI" ]; then
+                echo "ERROR: trino CLI not found"
+                find / -name trino 2>/dev/null | head -20
+                exit 1
+              fi
+
+              echo "Using Trino CLI: $TRINO_CLI"
 
               run_sql() {
                 local sql="$1"
@@ -69,64 +73,47 @@ spec:
                   --no-progress
               }
 
-              echo "============================================"
-              echo " Hive Tables Init — NYC Taxi Gold Layer"
-              echo "============================================"
-
-              echo "[1/4] Creating schemas..."
-              run_sql "CREATE SCHEMA IF NOT EXISTS hive.gold   WITH (location = 's3a://gold/')"
-              run_sql "CREATE SCHEMA IF NOT EXISTS hive.silver WITH (location = 's3a://silver/')"
-              run_sql "CREATE SCHEMA IF NOT EXISTS hive.bronze WITH (location = 's3a://bronze/')"
-              echo "  ✓ Schemas created"
-
-              echo "[2/4] Creating hive.gold.features..."
-              run_sql "DROP TABLE IF EXISTS hive.gold.features"
-              run_sql "CREATE TABLE IF NOT EXISTS hive.gold.features (
-                trip_id VARCHAR, fare_amount DOUBLE,
-                passenger_count BIGINT, trip_distance DOUBLE, trip_duration_seconds BIGINT,
-                pulocation_id INTEGER, dolocation_id INTEGER,
-                pickup_hour INTEGER, pickup_day_of_week INTEGER, is_weekend INTEGER,
-                hour_sin DOUBLE, hour_cos DOUBLE, day_sin DOUBLE, day_cos DOUBLE,
-                distance_manhattan DOUBLE, speed DOUBLE,
-                location_cluster INTEGER, temporal_cluster INTEGER,
-                year_month VARCHAR
-              ) WITH (format = 'PARQUET', external_location = 's3a://gold/features/data/')"
-              echo "  ✓ hive.gold.features created"
-
-              echo "[3/4] Creating hive.gold.predictions..."
-              run_sql "DROP TABLE IF EXISTS hive.gold.predictions"
-              run_sql "CREATE TABLE IF NOT EXISTS hive.gold.predictions (
-                trip_id VARCHAR, passenger_count BIGINT, trip_distance DOUBLE,
-                trip_duration_seconds BIGINT, speed DOUBLE,
-                pickup_hour INTEGER, pickup_day_of_week INTEGER, is_weekend INTEGER,
-                hour_sin DOUBLE, hour_cos DOUBLE, day_sin DOUBLE, day_cos DOUBLE,
-                distance_manhattan DOUBLE, location_cluster INTEGER, temporal_cluster INTEGER,
-                predicted_fare DOUBLE, model_version VARCHAR,
-                prediction_timestamp TIMESTAMP, event_time TIMESTAMP
-              ) WITH (format = 'PARQUET', external_location = 's3a://gold/predictions/')"
-              echo "  ✓ hive.gold.predictions created"
-
-              echo "[4/4] Creating hive.silver.trips..."
-              run_sql "DROP TABLE IF EXISTS hive.silver.trips"
-              run_sql "CREATE TABLE IF NOT EXISTS hive.silver.trips (
-                trip_id VARCHAR, event_type VARCHAR, schema_version VARCHAR,
-                ingest_mode VARCHAR, ingest_timestamp TIMESTAMP, event_time TIMESTAMP,
-                trip_date VARCHAR, trip_hour INTEGER, vendor_id INTEGER,
-                pickup_datetime TIMESTAMP, dropoff_datetime TIMESTAMP,
-                passenger_count BIGINT, trip_distance DOUBLE, rate_code_id BIGINT,
-                store_and_fwd_flag VARCHAR, pulocation_id INTEGER, dolocation_id INTEGER,
-                payment_type INTEGER, payment_type_desc VARCHAR,
-                fare_amount DOUBLE, extra DOUBLE, mta_tax DOUBLE, tip_amount DOUBLE,
-                tolls_amount DOUBLE, improvement_surcharge DOUBLE, total_amount DOUBLE,
-                congestion_surcharge DOUBLE, airport_fee DOUBLE,
-                trip_duration_seconds BIGINT, year_month VARCHAR
-              ) WITH (format = 'PARQUET', external_location = 's3a://silver/trips/data/')"
-              echo "  ✓ hive.silver.trips created"
+              register_delta_table() {
+                local schema="$1"
+                local table="$2"
+                local location="$3"
+                echo "  Registering delta.${schema}.${table} -> ${location}"
+                echo "CALL delta.system.register_table(schema_name => '${schema}', table_name => '${table}', table_location => '${location}')" \
+                  | $TRINO_CLI \
+                      --server "$TRINO_SERVER" \
+                      --user hive-init \
+                      --output-format TSV \
+                      --no-progress \
+                  || echo "  Table may already be registered or source path is not ready yet: delta.${schema}.${table}"
+              }
 
               echo "============================================"
-              echo " Verification — listing tables"
+              echo " Delta Table Registration - NYC Taxi Lakehouse"
               echo "============================================"
-              run_sql "SHOW TABLES IN hive.gold"
-              run_sql "SHOW TABLES IN hive.silver"
 
-              echo "✅ All tables initialized successfully!"
+              echo "[1/4] Creating Delta schemas..."
+              run_sql "CREATE SCHEMA IF NOT EXISTS delta.bronze_nyc_taxi WITH (location = 's3a://lakehouse/_trino/bronze_nyc_taxi')"
+              run_sql "CREATE SCHEMA IF NOT EXISTS delta.silver_nyc_taxi WITH (location = 's3a://lakehouse/_trino/silver_nyc_taxi')"
+              run_sql "CREATE SCHEMA IF NOT EXISTS delta.gold_ml WITH (location = 's3a://lakehouse/_trino/gold_ml')"
+              run_sql "CREATE SCHEMA IF NOT EXISTS delta.gold_monitoring WITH (location = 's3a://lakehouse/_trino/gold_monitoring')"
+
+              echo "[2/4] Registering Bronze/Silver tables..."
+              register_delta_table "bronze_nyc_taxi" "trip_started" "s3a://lakehouse/bronze/nyc-taxi/trip_started"
+              register_delta_table "bronze_nyc_taxi" "trip_completed" "s3a://lakehouse/bronze/nyc-taxi/trip_completed"
+              register_delta_table "silver_nyc_taxi" "trip_started" "s3a://lakehouse/silver/nyc-taxi/trip_started"
+              register_delta_table "silver_nyc_taxi" "trip_completed" "s3a://lakehouse/silver/nyc-taxi/trip_completed"
+              register_delta_table "silver_nyc_taxi" "trip_lifecycle" "s3a://lakehouse/silver/nyc-taxi/trip_lifecycle"
+
+              echo "[3/4] Registering Gold ML tables..."
+              register_delta_table "gold_ml" "route_estimates" "s3a://lakehouse/gold/ml/route_estimates"
+              register_delta_table "gold_ml" "features" "s3a://lakehouse/gold/ml/features"
+              register_delta_table "gold_ml" "predictions" "s3a://lakehouse/gold/ml/predictions"
+              register_delta_table "gold_ml" "prediction_actuals" "s3a://lakehouse/gold/ml/prediction_actuals"
+              register_delta_table "gold_monitoring" "model_quality_daily" "s3a://lakehouse/gold/monitoring/model_quality_daily"
+
+              echo "[4/4] Verification..."
+              run_sql "SHOW TABLES IN delta.silver_nyc_taxi"
+              run_sql "SHOW TABLES IN delta.gold_ml"
+              run_sql "SHOW TABLES IN delta.gold_monitoring"
+
+              echo "Delta tables registration completed."

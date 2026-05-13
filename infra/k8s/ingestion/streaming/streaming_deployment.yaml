@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nyc-taxi-streaming
-  namespace: spark-operator
+  namespace: lakehouse
 spec:
   replicas: 1
   selector: 
@@ -20,7 +20,7 @@ spec:
             - sh
             - -c
             - |
-              until nc -z my-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local 9092; do
+              until nc -z my-kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local 9092; do
                 echo "Waiting for Kafka to be ready..."
                 sleep 5
               done
@@ -34,7 +34,7 @@ spec:
             - name: KAFKA_COMPLETED_TOPIC
               value: "nyc-taxi-trip-completed"
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "my-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+              value: "my-kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local:9092"
             - name: DATA_DIR
               value: "/data/yellow_data"
             - name: YEAR

@@ -1,71 +1,78 @@
-# 🚕 NYC Taxi BI Stack Guide
+# NYC Taxi BI Stack Guide
 
-Hướng dẫn thiết lập và vận hành hệ thống Business Intelligence (BI) cho dự án NYC Taxi Pipeline trên môi trường Local/Docker.
+BI trên nhánh `dev` dùng lại kiến trúc streaming lakehouse mới:
 
-## 🏗️ Kiến trúc hệ thống
-Dữ liệu di chuyển qua các tầng sau:
-1.  **MinIO (S3)**: Lưu trữ các tệp Parquet (Bronze -> Silver -> Gold).
-2.  **Spark**: Xử lý ETL và Feature Engineering.
-3.  **Hive Metastore**: Quản lý Metadata và định nghĩa bảng.
-4.  **Trino**: Query Engine tốc độ cao kết nối với Hive.
-5.  **Superset**: Giao diện trực quan hóa dữ liệu và Dashboard.
-
----
-
-## 🚀 Quy trình triển khai (3 Bước)
-
-### Bước 1: Khởi động Hạ tầng Docker
-Chạy toàn bộ các dịch vụ cần thiết (MinIO, Postgres, Hive, Trino, Superset):
-```bash
-docker-compose -f docker-compose.dev.yml up -d
+```text
+Spark / Delta Lake on MinIO
+  -> Hive Metastore metadata
+  -> Trino delta catalog
+  -> Superset dashboard
 ```
 
-### Bước 2: Chạy Data Pipeline
-Đưa dữ liệu thực tế vào hệ thống và thực hiện Feature Engineering:
-```bash
-python3 run_pipeline_v3.py
+Superset không đọc trực tiếp Kafka hoặc raw Silver lớn cho từng chart. Dữ liệu được query qua Trino từ các Delta table đã được register:
+
+```text
+delta.silver_nyc_taxi.trip_started
+delta.silver_nyc_taxi.trip_completed
+delta.silver_nyc_taxi.trip_lifecycle
+delta.gold_ml.route_estimates
+delta.gold_ml.features
+delta.gold_ml.predictions
+delta.gold_ml.prediction_actuals
+delta.gold_monitoring.model_quality_daily
 ```
-*Lưu ý: Script này sẽ tự động ánh xạ các cột và tính toán giờ giấc, ngày tháng để phục vụ BI.*
 
-### Bước 3: Khởi tạo Dashboard tự động
-Tự động đăng ký Dataset và tạo Dashboard mẫu trên Superset:
+## K3s Setup
+
+Chạy sau khi MinIO đã có dữ liệu Lakehouse:
+
 ```bash
-python3 scripts/bi/init_nyc_dashboard.py
+bash scripts/bi/setup_bi.sh
 ```
 
----
+Port-forward:
 
-## 🔗 Thông tin truy cập các dịch vụ
+```bash
+kubectl port-forward -n lakehouse svc/superset 8088:8088 &
+kubectl port-forward -n lakehouse svc/trino 8080:8080 &
+```
 
-| Dịch vụ | Địa chỉ (Local) | Tài khoản |
-| :--- | :--- | :--- |
-| **Superset** | `http://localhost:8088` | `admin` / `admin` |
-| **Trino** | `http://localhost:8080` | `trino` (không pass) |
-| **MinIO Console** | `http://localhost:9001` | `minioadmin` / `minioadmin` |
-| **MLflow** | `http://localhost:5000` | - |
+Truy cập:
 
----
+```text
+Superset: http://localhost:8088
+Login: admin / admin
+```
 
-## 📊 Các biểu đồ có sẵn trong Dashboard
-Sau khi chạy Bước 3, bạn mở Superset và tìm Dashboard **"NYC Taxi Executive Dashboard"**:
-*   **Trip Distribution by Hour**: Thống kê khung giờ cao điểm.
-*   **Top 10 Pickup Locations**: Các khu vực đón khách nhộn nhịp nhất.
-*   **Revenue by Day of Week**: Doanh thu phân bổ theo các thứ trong tuần.
+Tạo dashboard mẫu:
 
----
+```bash
+python3 scripts/bi/create_dashboard.py
+```
 
-## 🛠️ Xử lý sự cố thường gặp
+## Sample Query
 
-### 1. Dữ liệu trên biểu đồ bị `<NULL>` hoặc `N/A`
-*   **Nguyên nhân**: Pipeline chưa chạy hoặc tên cột trong file Parquet không khớp với định dạng Hive.
-*   **Khắc phục**: Chạy lại `python3 run_pipeline_v3.py`. Script này đã được tối chuẩn hóa tên cột về chữ thường và có gạch dưới (ví dụ: `pulocation_id`).
+```sql
+SELECT
+    year_month,
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(fare_amount), 2) AS avg_fare
+FROM delta.silver_nyc_taxi.trip_lifecycle
+WHERE status = 'completed'
+GROUP BY year_month
+ORDER BY year_month;
+```
 
-### 2. Lỗi kết nối "Max retries exceeded" trong Superset
-*   **Nguyên nhân**: Thường do cache DNS của Superset container bị kẹt địa chỉ cũ của Trino.
-*   **Khắc phục**: 
-    ```bash
-    docker restart nyc-superset
-    ```
+Xem thêm query mẫu tại [scripts/bi/sample_queries.sql](scripts/bi/sample_queries.sql).
 
-### 3. Cổng 8088 bị trùng (nếu chạy ở local máy cá nhân)
-*   Sử dụng tính năng **Port Forwarding** của Lightning Studio để map cổng 8088 sang một cổng khác (ví dụ: 8089) trên máy của bạn.
+## Scope Dashboard
+
+Dashboard v1 tập trung chứng minh hệ thống hoạt động:
+
+- completed trips và revenue theo tháng/giờ từ `trip_lifecycle` để tránh duplicate event.
+- top pickup zones và routes.
+- lifecycle status từ `trip_lifecycle`.
+- model quality daily nếu đã chạy delayed-label monitoring.
+
+BI nâng cao/star schema chi tiết có thể làm ở phase sau.
