@@ -184,7 +184,7 @@ def merge_lifecycle(clean_df: DataFrame, silver_job: str, batch_id: int) -> None
         _run_with_retry(lambda: _merge_completed(spark, updates_df))
 
 
-def append_clean_table(clean_df: DataFrame) -> None:
+def append_clean_delta_table(clean_df: DataFrame) -> None:
     if _is_empty(clean_df):
         return
 
@@ -198,24 +198,24 @@ def append_clean_table(clean_df: DataFrame) -> None:
     )
 
 
-def process_clean_and_lifecycle_batch(clean_df: DataFrame, batch_id: int, silver_job: str) -> None:
+def process_clean_microbatch(clean_df: DataFrame, batch_id: int, silver_job: str) -> None:
     if _is_empty(clean_df):
         return
-    append_clean_table(clean_df)
+    append_clean_delta_table(clean_df)
     print(
         "[bronze_to_silver] Clean table appended; lifecycle MERGE is handled "
         f"by the separate lifecycle job. job={silver_job}, batch_id={batch_id}"
     )
 
 
-def write_clean_and_lifecycle_batch(clean_df: DataFrame, silver_job: str) -> None:
-    process_clean_and_lifecycle_batch(clean_df, 0, silver_job)
+def write_clean_batch(clean_df: DataFrame, silver_job: str) -> None:
+    process_clean_microbatch(clean_df, 0, silver_job)
 
 
-def write_clean_and_lifecycle_streaming(clean_df: DataFrame, silver_job: str) -> None:
+def write_clean_streaming(clean_df: DataFrame, silver_job: str) -> None:
     query = (
         clean_df.writeStream
-        .foreachBatch(lambda batch_df, batch_id: process_clean_and_lifecycle_batch(
+        .foreachBatch(lambda batch_df, batch_id: process_clean_microbatch(
             batch_df,
             batch_id,
             silver_job,

@@ -5,8 +5,8 @@ from app.transform import transform
 from app.writer import (
     expire_lifecycle,
     merge_lifecycle_from_silver,
-    write_clean_and_lifecycle_batch,
-    write_clean_and_lifecycle_streaming,
+    write_clean_batch,
+    write_clean_streaming,
 )
 
 
@@ -29,9 +29,9 @@ def main() -> None:
     clean_df = transform(bronze_df, PIPELINE_MODE, SILVER_JOB)
 
     if PIPELINE_MODE == "batch":
-        write_clean_and_lifecycle_batch(clean_df, SILVER_JOB)
+        write_clean_batch(clean_df, SILVER_JOB)
     else:
-        write_clean_and_lifecycle_streaming(clean_df, SILVER_JOB)
+        write_clean_streaming(clean_df, SILVER_JOB)
 
 
 if __name__ == "__main__":
