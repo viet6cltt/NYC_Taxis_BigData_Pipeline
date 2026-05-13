@@ -172,7 +172,7 @@ curl -X POST http://<fastapi-service>:8000/predict \
 
 | Variable | Default | Description |
 |---|---|---|
-| `MINIO_ENDPOINT` | `http://minio-api.minio.svc.cluster.local:9000` | MinIO S3 endpoint |
+| `MINIO_ENDPOINT` | `http://minio-api.storage.svc.cluster.local:9000` | MinIO S3 endpoint |
 | `MLFLOW_TRACKING_URI` | `http://mlflow.mlflow.svc.cluster.local:5000` | MLflow server |
 | `MODEL_NAME` | `XGB_NYC_Fare` | Registered model name |
 | `MODEL_STAGE` | `Production` | MLflow model stage to serve |

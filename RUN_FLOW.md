@@ -210,6 +210,41 @@ FastAPI load model từ MLflow. Request `/predict` dùng estimated distance/dura
 }
 ```
 
+## 12. BentoML
+
+BentoML dùng cùng MLflow model và cùng feature contract `estimated_*` như FastAPI.
+
+```bash
+kubectl apply -f infra/k8s/serving/bentoml_deployment.yaml
+```
+
+Chạy local nếu cần test nhanh:
+
+```bash
+bash scripts/serving/run_bentoml_local.sh
+```
+
+## 13. BI with Trino + Superset
+
+Chạy sau khi Silver/Gold Delta tables đã tồn tại:
+
+```bash
+bash scripts/bi/setup_bi.sh
+
+kubectl port-forward -n lakehouse svc/superset 8088:8088 &
+kubectl port-forward -n lakehouse svc/trino 8080:8080 &
+
+python3 scripts/bi/create_dashboard.py
+```
+
+Các schema chính trong Superset SQL Lab:
+
+```text
+delta.silver_nyc_taxi
+delta.gold_ml
+delta.gold_monitoring
+```
+
 ## Recommended Full Order
 
 ```bash
@@ -237,6 +272,10 @@ bash scripts/training/run_feature_engineering.sh model_quality_daily
 
 # API
 kubectl apply -f infra/k8s/serving/fastapi_deployment.yaml
+kubectl apply -f infra/k8s/serving/bentoml_deployment.yaml
+
+# BI
+bash scripts/bi/setup_bi.sh
 ```
 
 ## Operational Notes
