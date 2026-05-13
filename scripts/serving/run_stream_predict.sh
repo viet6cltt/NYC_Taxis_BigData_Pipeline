@@ -82,6 +82,7 @@ fi
     --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.sql.shuffle.partitions=4 \
+    --conf spark.kubernetes.executor.node.selector.workload=spark \
     \
     "${starting_version_conf[@]}" \
     "$APP_FILE"
