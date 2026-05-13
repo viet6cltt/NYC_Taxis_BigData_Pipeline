@@ -29,8 +29,8 @@ data:
     node.id=trino-coordinator
     node.data-dir=/data/trino
   # -----------------------------------------------------------------------
-  # Catalog: delta — đọc Delta Lake tables trực tiếp từ MinIO qua Hive Metastore
-  # Dùng cho gold.features và gold.predictions
+  # Catalog: delta — đọc Delta Lake tables trực tiếp từ MinIO qua Hive Metastore.
+  # Dùng cho silver_nyc_taxi, gold_ml, gold_monitoring.
   # -----------------------------------------------------------------------
   delta.properties: |
     connector.name=delta_lake

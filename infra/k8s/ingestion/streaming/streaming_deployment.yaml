@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nyc-taxi-streaming
-  namespace: spark-operator
+  namespace: lakehouse
 spec:
   replicas: 1
   selector: 

@@ -2,14 +2,18 @@ import time
 
 from delta.tables import DeltaTable
 from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import functions as F
 from pyspark.sql.types import StructField, StructType
 
 from app.config import (
     CHECKPOINT_LOCATION,
-    LIFECYCLE_MERGE_ENABLED,
+    LIFECYCLE_MERGE_SINCE_TIMESTAMP,
+    LIFECYCLE_MERGE_UNTIL_TIMESTAMP,
     LIFECYCLE_PATH,
     LIFECYCLE_TTL_HOURS,
     OUTPUT_PATH,
+    SILVER_COMPLETED_PATH,
+    SILVER_STARTED_PATH,
     TRIGGER_INTERVAL,
 )
 from app.transform import (
@@ -41,7 +45,14 @@ def ensure_lifecycle_table(spark: SparkSession) -> None:
     schema = lifecycle_schema()
     for attempt in range(1, 4):
         try:
-            DeltaTable.createIfNotExists(spark).location(LIFECYCLE_PATH).addColumns(schema).execute()
+            (
+                spark.createDataFrame([], schema)
+                .write
+                .format("delta")
+                .mode("ignore")
+                .partitionBy("year_month")
+                .save(LIFECYCLE_PATH)
+            )
             return
         except Exception:
             if delta_table_exists(spark, LIFECYCLE_PATH):
@@ -72,7 +83,7 @@ def _merge_started(spark: SparkSession, updates_df: DataFrame) -> None:
         target.alias("target")
         .merge(
             updates_df.alias("source"),
-            "target.trip_id = source.trip_id",
+            "target.year_month = source.year_month AND target.trip_id = source.trip_id",
         )
         .whenMatchedUpdate(
             condition=(
@@ -109,7 +120,7 @@ def _merge_completed(spark: SparkSession, updates_df: DataFrame) -> None:
         target.alias("target")
         .merge(
             updates_df.alias("source"),
-            "target.trip_id = source.trip_id",
+            "target.year_month = source.year_month AND target.trip_id = source.trip_id",
         )
         .whenMatchedUpdate(
             condition=(
@@ -191,13 +202,10 @@ def process_clean_and_lifecycle_batch(clean_df: DataFrame, batch_id: int, silver
     if _is_empty(clean_df):
         return
     append_clean_table(clean_df)
-    if LIFECYCLE_MERGE_ENABLED:
-        merge_lifecycle(clean_df, silver_job, batch_id)
-    else:
-        print(
-            "[bronze_to_silver] Skip lifecycle MERGE "
-            f"for job={silver_job}, batch_id={batch_id}"
-        )
+    print(
+        "[bronze_to_silver] Clean table appended; lifecycle MERGE is handled "
+        f"by the separate lifecycle job. job={silver_job}, batch_id={batch_id}"
+    )
 
 
 def write_clean_and_lifecycle_batch(clean_df: DataFrame, silver_job: str) -> None:
@@ -218,6 +226,41 @@ def write_clean_and_lifecycle_streaming(clean_df: DataFrame, silver_job: str) ->
     )
 
     query.awaitTermination()
+
+
+def _read_optional_delta_table(spark: SparkSession, path: str) -> DataFrame | None:
+    if not delta_table_exists(spark, path):
+        print(f"[bronze_to_silver] Skip missing Delta source: {path}")
+        return None
+    return spark.read.format("delta").load(path)
+
+
+def _filter_lifecycle_source(df: DataFrame) -> DataFrame:
+    if LIFECYCLE_MERGE_SINCE_TIMESTAMP:
+        df = df.filter(
+            F.col("ingest_timestamp") >
+            F.to_timestamp(F.lit(LIFECYCLE_MERGE_SINCE_TIMESTAMP))
+        )
+    if LIFECYCLE_MERGE_UNTIL_TIMESTAMP:
+        df = df.filter(
+            F.col("ingest_timestamp") <=
+            F.to_timestamp(F.lit(LIFECYCLE_MERGE_UNTIL_TIMESTAMP))
+        )
+    return df
+
+
+def merge_lifecycle_from_silver(spark: SparkSession) -> None:
+    ensure_lifecycle_table(spark)
+
+    started_df = _read_optional_delta_table(spark, SILVER_STARTED_PATH)
+    if started_df is not None:
+        started_df = _filter_lifecycle_source(started_df)
+        merge_lifecycle(started_df, "started", 0)
+
+    completed_df = _read_optional_delta_table(spark, SILVER_COMPLETED_PATH)
+    if completed_df is not None:
+        completed_df = _filter_lifecycle_source(completed_df)
+        merge_lifecycle(completed_df, "completed", 0)
 
 
 def expire_lifecycle(spark: SparkSession) -> None:

@@ -6,7 +6,7 @@
 kubectl apply -f infra/k8s/superset/superset.yaml
 
 # Or use convenience script
-bash scripts/setup_superset.sh
+bash scripts/bi/setup_bi.sh
 
 # With advanced (Redis + Celery workers)
 kubectl apply -f infra/k8s/superset/superset.yaml
@@ -45,23 +45,25 @@ Password: admin
 ### Option 2: Manual Connection
 ```
 Database Name: trino
-SQLAlchemy URI: trino://trino.lakehouse.svc.cluster.local:8080/iceberg
+SQLAlchemy URI: trino://trino.lakehouse.svc.cluster.local:8080/delta
 Engine Parameters: {}
 ```
 
 ## 🎯 Sample Queries
 ```sql
--- Query Bronze layer (raw data)
-SELECT * FROM iceberg.bronze.trips LIMIT 10
+-- Query Bronze layer (raw completed events)
+SELECT * FROM delta.bronze_nyc_taxi.trip_completed LIMIT 10
 
--- Query Silver layer (cleaned data)
-SELECT COUNT(*) as total_trips FROM iceberg.silver.trips
+-- Query Silver lifecycle current-state table for BI-safe completed counts
+SELECT COUNT(*) AS completed_trips
+FROM delta.silver_nyc_taxi.trip_lifecycle
+WHERE status = 'completed'
 
--- Query Gold layer (features)
-SELECT * FROM iceberg.gold.features WHERE year_month = '2024-01'
+-- Query Gold ML features
+SELECT * FROM delta.gold_ml.features WHERE year_month = '2024-01'
 
 -- Check available tables
-SHOW TABLES FROM iceberg.silver
+SHOW TABLES FROM delta.silver_nyc_taxi
 ```
 
 ## 🔧 Admin Commands
@@ -101,7 +103,7 @@ kubectl get pods -n lakehouse -l app=superset
 kubectl logs -n lakehouse -l app=superset
 
 # View init job logs
-kubectl logs -n lakehouse job/superset-init-trino
+kubectl logs -n lakehouse job/superset-add-trino-db
 
 # Check if Trino is reachable
 kubectl exec -it -n lakehouse deployment/superset -- \

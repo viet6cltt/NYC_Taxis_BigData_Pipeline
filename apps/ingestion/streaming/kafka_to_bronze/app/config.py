@@ -20,10 +20,10 @@ DEFAULT_CHECKPOINT_BY_KIND = {
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", DEFAULT_TOPIC_BY_KIND[EVENT_KIND])
 OUTPUT_PATH = os.getenv("OUTPUT_PATH", DEFAULT_OUTPUT_PATH_BY_KIND[EVENT_KIND])
 CHECKPOINT_LOCATION = os.getenv("CHECKPOINT_LOCATION", DEFAULT_CHECKPOINT_BY_KIND[EVENT_KIND])
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "my-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "my-kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local:9092")
 AVRO_SCHEMA_PATH = os.getenv("AVRO_SCHEMA_PATH", "schemas/taxi_trip_event.avsc")
 TRIGGER_INTERVAL = os.getenv("TRIGGER_INTERVAL", "30 seconds")
 
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio-api.minio.svc.cluster.local:9000")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio-api.storage.svc.cluster.local:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")

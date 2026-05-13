@@ -28,7 +28,7 @@ APP_FILE="local:///opt/spark/work-dir/app/main.py"
 
 # MinIO / Delta
 # Spark driver/executors run inside Kubernetes, so use the in-cluster Service DNS.
-MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.cluster.local:9000}"
+MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.storage.svc.cluster.local:9000}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 
@@ -87,9 +87,9 @@ echo "    OUTPUT_PATH=${OUTPUT_PATH}"
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     --conf spark.hadoop.fs.s3a.attempts.maximum=3 \
     \
-    --conf spark.driver.memory=2g \
+    --conf spark.driver.memory=1g \
     --conf spark.executor.instances=1 \
-    --conf spark.executor.memory=3584m \
+    --conf spark.executor.memory=1g \
     --conf spark.kubernetes.driver.request.cores=1 \
     --conf spark.kubernetes.driver.limit.cores=2 \
     --conf spark.kubernetes.executor.request.cores=1 \

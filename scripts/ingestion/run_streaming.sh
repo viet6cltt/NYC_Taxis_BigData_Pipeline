@@ -25,7 +25,7 @@ SERVICE_ACCOUNT="spark-user"
 TARGET_EVENT_KIND="${1:-all}"
 KAFKA_STARTED_TOPIC="nyc-taxi-trip-started"
 KAFKA_COMPLETED_TOPIC="nyc-taxi-trip-completed"
-KAFKA_BOOTSTRAP_SERVERS="my-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-kafka.ingestion.svc.cluster.local:9092}"
 STARTED_OUTPUT_PATH="s3a://lakehouse/bronze/nyc-taxi/trip_started"
 COMPLETED_OUTPUT_PATH="s3a://lakehouse/bronze/nyc-taxi/trip_completed"
 STARTED_CHECKPOINT_LOCATION="s3a://lakehouse/_checkpoints/bronze/trip_started/kafka_to_bronze"
@@ -38,7 +38,7 @@ IMAGE="nyc-taxi-streaming-consumer:v1.0"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
 
 # MinIO / Delta
-MINIO_ENDPOINT="http://minio-api.minio.svc.cluster.local:9000"
+MINIO_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.storage.svc.cluster.local:9000}"
 MINIO_ACCESS_KEY="minioadmin"
 MINIO_SECRET_KEY="minioadmin"
 
@@ -102,8 +102,8 @@ submit_streaming_job() {
     --conf spark.hadoop.fs.s3a.attempts.maximum=3 \
     \
     --conf spark.driver.memory=1g \
-    --conf spark.executor.instances=2 \
-    --conf spark.executor.memory=2g \
+    --conf spark.executor.instances=1 \
+    --conf spark.executor.memory=1g \
     --conf spark.kubernetes.driver.request.cores=0.5 \
     --conf spark.kubernetes.driver.limit.cores=1 \
     --conf spark.kubernetes.executor.request.cores=0.5 \

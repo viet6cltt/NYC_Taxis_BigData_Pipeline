@@ -21,7 +21,7 @@ NAMESPACE="spark-operator"
 SERVICE_ACCOUNT="spark-user"
 
 # Runtime
-TARGET="${1:-all}"                     # all|started|completed|expire
+TARGET="${1:-all}"                     # all|started|completed|lifecycle|expire
 REQUESTED_PIPELINE_MODE="${2:-streaming}" # streaming|batch
 REGISTRY="${REGISTRY:-localhost:5000}"
 IMAGE="nyc-taxi-silver-consumer:v1.0"
@@ -39,18 +39,19 @@ COMPLETED_CHECKPOINT_PATH="s3a://lakehouse/_checkpoints/silver/trip_completed/pr
 TRIGGER_INTERVAL="${TRIGGER_INTERVAL:-30 seconds}"
 WATERMARK_DELAY="${WATERMARK_DELAY:-48 hours}"
 LIFECYCLE_TTL_HOURS="${LIFECYCLE_TTL_HOURS:-48}"
-LIFECYCLE_MERGE_ENABLED="${LIFECYCLE_MERGE_ENABLED:-true}"
+LIFECYCLE_MERGE_SINCE_TIMESTAMP="${LIFECYCLE_MERGE_SINCE_TIMESTAMP:-}"
+LIFECYCLE_MERGE_UNTIL_TIMESTAMP="${LIFECYCLE_MERGE_UNTIL_TIMESTAMP:-}"
 STARTING_VERSION="${STARTING_VERSION:-}"
 SPARK_LOCAL_DIR="${SPARK_LOCAL_DIR:-/data/spark-local/silver}"
 TMPDIR="${TMPDIR:-/data/tmp/silver}"
 S3A_BUFFER_DIR="${S3A_BUFFER_DIR:-/data/s3a-buffer/silver}"
 SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-2g}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-1g}"
 SPARK_SHUFFLE_PARTITIONS="${SPARK_SHUFFLE_PARTITIONS:-4}"
 
 # MinIO / Delta
-MINIO_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.minio.svc.cluster.local:9000}"
+MINIO_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.storage.svc.cluster.local:9000}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 
@@ -137,10 +138,13 @@ submit_silver_job() {
     --conf spark.kubernetes.driverEnv.OUTPUT_PATH="$output_path" \
     --conf spark.kubernetes.driverEnv.CHECKPOINT_LOCATION="$checkpoint_path" \
     --conf spark.kubernetes.driverEnv.LIFECYCLE_PATH="$LIFECYCLE_PATH" \
+    --conf spark.kubernetes.driverEnv.SILVER_STARTED_PATH="$SILVER_STARTED_PATH" \
+    --conf spark.kubernetes.driverEnv.SILVER_COMPLETED_PATH="$SILVER_COMPLETED_PATH" \
     --conf spark.kubernetes.driverEnv.TRIGGER_INTERVAL="$TRIGGER_INTERVAL" \
     --conf spark.kubernetes.driverEnv.WATERMARK_DELAY="$WATERMARK_DELAY" \
     --conf spark.kubernetes.driverEnv.LIFECYCLE_TTL_HOURS="$LIFECYCLE_TTL_HOURS" \
-    --conf spark.kubernetes.driverEnv.LIFECYCLE_MERGE_ENABLED="$LIFECYCLE_MERGE_ENABLED" \
+    --conf spark.kubernetes.driverEnv.LIFECYCLE_MERGE_SINCE_TIMESTAMP="$LIFECYCLE_MERGE_SINCE_TIMESTAMP" \
+    --conf spark.kubernetes.driverEnv.LIFECYCLE_MERGE_UNTIL_TIMESTAMP="$LIFECYCLE_MERGE_UNTIL_TIMESTAMP" \
     --conf spark.kubernetes.driverEnv.TMPDIR="$TMPDIR" \
     --conf spark.executorEnv.TMPDIR="$TMPDIR" \
     \
@@ -188,6 +192,10 @@ submit_expire_job() {
     submit_silver_job "expire" "batch" "" "" ""
 }
 
+submit_lifecycle_job() {
+    submit_silver_job "lifecycle" "batch" "" "" ""
+}
+
 submit_started_job() {
     submit_silver_job \
         "started" \
@@ -208,7 +216,6 @@ submit_completed_job() {
 
 case "$TARGET" in
     all)
-        submit_expire_job
         submit_started_job &
         started_pid=$!
         submit_completed_job &
@@ -222,11 +229,14 @@ case "$TARGET" in
     completed)
         submit_completed_job
         ;;
+    lifecycle)
+        submit_lifecycle_job
+        ;;
     expire)
         submit_expire_job
         ;;
     *)
-        echo "Usage: $0 [all|started|completed|expire] [streaming|batch]"
+        echo "Usage: $0 [all|started|completed|lifecycle|expire] [streaming|batch]"
         exit 1
         ;;
 esac

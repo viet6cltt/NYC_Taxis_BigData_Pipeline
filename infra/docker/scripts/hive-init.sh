@@ -1,60 +1,45 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 TRINO="trino --server http://trino:8080 --user hive-init --output-format TSV --no-progress"
 
 run_sql() {
   echo "  SQL: $1"
-  echo "$1" | eval $TRINO
+  echo "$1" | eval "$TRINO"
 }
 
-echo '=== Creating schemas ==='
-run_sql "CREATE SCHEMA IF NOT EXISTS hive.gold   WITH (location = 's3a://gold/')"
-run_sql "CREATE SCHEMA IF NOT EXISTS hive.silver WITH (location = 's3a://silver/')"
-run_sql "CREATE SCHEMA IF NOT EXISTS hive.bronze WITH (location = 's3a://bronze/')"
+register_delta_table() {
+  local schema="$1"
+  local table="$2"
+  local location="$3"
+  echo "  Registering delta.${schema}.${table} -> ${location}"
+  echo "CALL delta.system.register_table(schema_name => '${schema}', table_name => '${table}', table_location => '${location}')" \
+    | eval "$TRINO" \
+    || echo "  Table may already be registered or source path is not ready yet: delta.${schema}.${table}"
+}
 
-echo '=== Creating hive.gold.features ==='
-run_sql "DROP TABLE IF EXISTS hive.gold.features"
-run_sql "CREATE TABLE IF NOT EXISTS hive.gold.features (
-  trip_id VARCHAR, fare_amount DOUBLE,
-  passenger_count BIGINT, trip_distance DOUBLE, trip_duration_seconds BIGINT,
-  pulocation_id INTEGER, dolocation_id INTEGER,
-  pickup_hour INTEGER, pickup_day_of_week INTEGER, is_weekend INTEGER,
-  hour_sin DOUBLE, hour_cos DOUBLE, day_sin DOUBLE, day_cos DOUBLE,
-  distance_manhattan DOUBLE, speed DOUBLE,
-  location_cluster INTEGER, temporal_cluster INTEGER,
-  year_month VARCHAR
-) WITH (format = 'PARQUET', external_location = 's3a://gold/features/data/')"
+echo '=== Creating Delta schemas ==='
+run_sql "CREATE SCHEMA IF NOT EXISTS delta.bronze_nyc_taxi WITH (location = 's3://lakehouse/_trino/bronze_nyc_taxi')"
+run_sql "CREATE SCHEMA IF NOT EXISTS delta.silver_nyc_taxi WITH (location = 's3://lakehouse/_trino/silver_nyc_taxi')"
+run_sql "CREATE SCHEMA IF NOT EXISTS delta.gold_ml WITH (location = 's3://lakehouse/_trino/gold_ml')"
+run_sql "CREATE SCHEMA IF NOT EXISTS delta.gold_monitoring WITH (location = 's3://lakehouse/_trino/gold_monitoring')"
 
-echo '=== Creating hive.gold.predictions ==='
-run_sql "DROP TABLE IF EXISTS hive.gold.predictions"
-run_sql "CREATE TABLE IF NOT EXISTS hive.gold.predictions (
-  trip_id VARCHAR, passenger_count BIGINT, trip_distance DOUBLE,
-  trip_duration_seconds BIGINT, speed DOUBLE,
-  pickup_hour INTEGER, pickup_day_of_week INTEGER, is_weekend INTEGER,
-  hour_sin DOUBLE, hour_cos DOUBLE, day_sin DOUBLE, day_cos DOUBLE,
-  distance_manhattan DOUBLE, location_cluster INTEGER, temporal_cluster INTEGER,
-  predicted_fare DOUBLE, model_version VARCHAR,
-  prediction_timestamp TIMESTAMP, event_time TIMESTAMP
-) WITH (format = 'PARQUET', external_location = 's3a://gold/predictions/')"
+echo '=== Registering Bronze/Silver Delta tables ==='
+register_delta_table "bronze_nyc_taxi" "trip_started" "s3://lakehouse/bronze/nyc-taxi/trip_started"
+register_delta_table "bronze_nyc_taxi" "trip_completed" "s3://lakehouse/bronze/nyc-taxi/trip_completed"
+register_delta_table "silver_nyc_taxi" "trip_started" "s3://lakehouse/silver/nyc-taxi/trip_started"
+register_delta_table "silver_nyc_taxi" "trip_completed" "s3://lakehouse/silver/nyc-taxi/trip_completed"
+register_delta_table "silver_nyc_taxi" "trip_lifecycle" "s3://lakehouse/silver/nyc-taxi/trip_lifecycle"
 
-echo '=== Creating hive.silver.trips ==='
-run_sql "DROP TABLE IF EXISTS hive.silver.trips"
-run_sql "CREATE TABLE IF NOT EXISTS hive.silver.trips (
-  trip_id VARCHAR, event_type VARCHAR, schema_version VARCHAR,
-  ingest_mode VARCHAR, ingest_timestamp TIMESTAMP, event_time TIMESTAMP,
-  trip_date VARCHAR, trip_hour INTEGER, vendor_id INTEGER,
-  pickup_datetime TIMESTAMP, dropoff_datetime TIMESTAMP,
-  passenger_count BIGINT, trip_distance DOUBLE, rate_code_id BIGINT,
-  store_and_fwd_flag VARCHAR, pulocation_id INTEGER, dolocation_id INTEGER,
-  payment_type INTEGER, payment_type_desc VARCHAR,
-  fare_amount DOUBLE, extra DOUBLE, mta_tax DOUBLE, tip_amount DOUBLE,
-  tolls_amount DOUBLE, improvement_surcharge DOUBLE, total_amount DOUBLE,
-  congestion_surcharge DOUBLE, airport_fee DOUBLE,
-  trip_duration_seconds BIGINT, year_month VARCHAR
-) WITH (format = 'PARQUET', external_location = 's3a://silver/trips/data/')"
+echo '=== Registering Gold ML Delta tables ==='
+register_delta_table "gold_ml" "route_estimates" "s3://lakehouse/gold/ml/route_estimates"
+register_delta_table "gold_ml" "features" "s3://lakehouse/gold/ml/features"
+register_delta_table "gold_ml" "predictions" "s3://lakehouse/gold/ml/predictions"
+register_delta_table "gold_ml" "prediction_actuals" "s3://lakehouse/gold/ml/prediction_actuals"
+register_delta_table "gold_monitoring" "model_quality_daily" "s3://lakehouse/gold/monitoring/model_quality_daily"
 
 echo '=== Verify ==='
-run_sql "SHOW TABLES IN hive.gold"
-run_sql "SHOW TABLES IN hive.silver"
-echo '✅ Hive tables registered!'
+run_sql "SHOW TABLES IN delta.silver_nyc_taxi"
+run_sql "SHOW TABLES IN delta.gold_ml"
+run_sql "SHOW TABLES IN delta.gold_monitoring"
+echo 'Delta tables registered.'

@@ -6,7 +6,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nyc-taxi-stream-predict
-  namespace: spark-operator
+  namespace: lakehouse
   labels:
     app: nyc-taxi-stream-predict
 spec:
@@ -26,9 +26,9 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: MLFLOW_TRACKING_URI
-              value: "http://mlflow.mlflow.svc.cluster.local:5000"
+              value: "http://mlflow.mlops.svc.cluster.local:5000"
             - name: MINIO_ENDPOINT
-              value: "http://minio-api.minio.svc.cluster.local:9000"
+              value: "http://minio-api.storage.svc.cluster.local:9000"
             - name: MINIO_ACCESS_KEY
               value: "minioadmin"
             - name: MINIO_SECRET_KEY
