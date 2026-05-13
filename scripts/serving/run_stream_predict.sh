@@ -17,6 +17,7 @@ SPARK_DIR="$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3"
 NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-stream-predict:v1.0"
+IMAGE_PULL_POLICY="${IMAGE_PULL_POLICY:-Always}"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
 
 MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.storage.svc.cluster.local:9000}"
@@ -48,7 +49,7 @@ fi
     --name nyc-taxi-stream-predict \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
     --conf spark.kubernetes.container.image="$IMAGE" \
-    --conf spark.kubernetes.container.image.pullPolicy=IfNotPresent \
+    --conf spark.kubernetes.container.image.pullPolicy="$IMAGE_PULL_POLICY" \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
     \
@@ -82,7 +83,6 @@ fi
     --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.sql.shuffle.partitions=4 \
-    --conf spark.kubernetes.executor.node.selector.workload=spark \
     \
     "${starting_version_conf[@]}" \
     "$APP_FILE"

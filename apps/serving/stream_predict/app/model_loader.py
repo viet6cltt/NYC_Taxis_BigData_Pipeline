@@ -6,6 +6,7 @@ Spark executors via broadcast.
 
 import mlflow
 import mlflow.xgboost
+import xgboost as xgb
 
 from app.config import MLFLOW_TRACKING_URI, MODEL_NAME, MODEL_STAGE
 
@@ -18,6 +19,7 @@ def load_production_model():
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     model_uri = f"models:/{MODEL_NAME}/{MODEL_STAGE}"
     print(f"[stream_predict] Loading model from: {model_uri}")
+    print(f"[stream_predict] XGBoost runtime version: {xgb.__version__}")
     model = mlflow.xgboost.load_model(model_uri)
     print(f"[stream_predict] Model loaded OK — {MODEL_NAME}@{MODEL_STAGE}")
     return model

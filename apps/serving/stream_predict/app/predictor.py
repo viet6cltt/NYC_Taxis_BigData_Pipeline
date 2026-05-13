@@ -23,7 +23,8 @@ def make_predict_fn(bc_model, bc_feature_cols, bc_model_version):
 
         for pdf in iterator:
             X = pdf[feature_cols].fillna(0).replace([np.inf, -np.inf], 0)
-            pdf["predicted_fare_amount"] = model.predict(X).astype(float)
+            raw_predictions = model.predict(X).astype(float)
+            pdf["predicted_fare_amount"] = np.maximum(raw_predictions, 0.0)
             pdf["model_name"] = MODEL_NAME
             pdf["model_version"] = model_version
             pdf["model_stage"] = MODEL_STAGE

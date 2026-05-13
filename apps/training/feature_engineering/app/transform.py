@@ -363,6 +363,11 @@ def build_prediction_actuals(predictions_df: DataFrame, completed_df: DataFrame)
         )
     )
 
+    delay_seconds = (
+        F.unix_timestamp("actual_arrival_timestamp")
+        - F.unix_timestamp("prediction_timestamp")
+    )
+
     joined = (
         predictions
         .join(completed, predictions.trip_id == completed.completed_trip_id, "inner")
@@ -374,7 +379,7 @@ def build_prediction_actuals(predictions_df: DataFrame, completed_df: DataFrame)
             "label_delay_seconds",
             F.when(
                 F.col("prediction_timestamp").isNotNull() & F.col("actual_arrival_timestamp").isNotNull(),
-                F.unix_timestamp("actual_arrival_timestamp") - F.unix_timestamp("prediction_timestamp"),
+                F.when(delay_seconds >= 0, delay_seconds),
             ),
         )
         .withColumn("year_month", F.coalesce(F.col("year_month"), F.col("actual_year_month")))
@@ -417,7 +422,10 @@ def build_model_quality_daily(prediction_actuals_df: DataFrame) -> DataFrame:
     return (
         prediction_actuals_df
         .filter(F.col("actual_fare_amount").isNotNull())
-        .withColumn("metric_date", F.to_date(F.col("actual_arrival_timestamp")))
+        .withColumn(
+            "metric_date",
+            F.to_date(F.coalesce(F.col("dropoff_datetime"), F.col("actual_pickup_datetime"), F.col("actual_arrival_timestamp"))),
+        )
         .groupBy("metric_date", "model_name", "model_version")
         .agg(
             F.count(F.lit(1)).cast("long").alias("prediction_count"),

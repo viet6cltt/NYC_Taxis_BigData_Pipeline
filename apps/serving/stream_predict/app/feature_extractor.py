@@ -11,7 +11,17 @@ import math
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 
-from app.config import N_LOCATION_CLUSTERS, N_TEMPORAL_CLUSTERS
+from app.config import (
+    MAX_AVG_SPEED_MPH,
+    MAX_PASSENGER_COUNT,
+    MAX_TRIP_DISTANCE,
+    MAX_TRIP_DURATION_SECONDS,
+    MIN_AVG_SPEED_MPH,
+    MIN_TRIP_DISTANCE,
+    MIN_TRIP_DURATION_SECONDS,
+    N_LOCATION_CLUSTERS,
+    N_TEMPORAL_CLUSTERS,
+)
 
 
 def add_temporal_features(df: DataFrame) -> DataFrame:
@@ -174,6 +184,8 @@ def extract_features(started_df: DataFrame, route_estimates_df: DataFrame) -> Da
         .filter(F.col("pickup_datetime").isNotNull())
         .filter(F.col("pulocation_id").isNotNull())
         .filter(F.col("dolocation_id").isNotNull())
+        .filter(F.col("passenger_count").isNotNull())
+        .filter((F.col("passenger_count") > 0) & (F.col("passenger_count") <= MAX_PASSENGER_COUNT))
     )
     if "event_id" in df.columns:
         df = df.withColumnRenamed("event_id", "started_event_id")
@@ -184,7 +196,8 @@ def extract_features(started_df: DataFrame, route_estimates_df: DataFrame) -> Da
     df = add_distance_and_cluster_features(df)
     return df.filter(
         F.col("estimated_trip_distance").isNotNull()
-        & (F.col("estimated_trip_distance") > 0)
+        & F.col("estimated_trip_distance").between(MIN_TRIP_DISTANCE, MAX_TRIP_DISTANCE)
         & F.col("estimated_trip_duration_seconds").isNotNull()
-        & (F.col("estimated_trip_duration_seconds") > 0)
+        & F.col("estimated_trip_duration_seconds").between(MIN_TRIP_DURATION_SECONDS, MAX_TRIP_DURATION_SECONDS)
+        & F.col("estimated_speed").between(MIN_AVG_SPEED_MPH, MAX_AVG_SPEED_MPH)
     )

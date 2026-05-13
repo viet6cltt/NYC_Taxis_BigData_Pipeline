@@ -179,7 +179,6 @@ submit_silver_job() {
     --conf spark.kubernetes.driver.limit.cores=1.5 \
     --conf spark.kubernetes.executor.request.cores=0.5 \
     --conf spark.kubernetes.executor.limit.cores=1 \
-    --conf spark.kubernetes.executor.node.selector.workload=spark \
     \
     --conf spark.sql.shuffle.partitions="$SPARK_SHUFFLE_PARTITIONS" \
     --conf spark.sql.adaptive.enabled=true \
