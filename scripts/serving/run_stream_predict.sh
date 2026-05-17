@@ -16,6 +16,14 @@ SPARK_DIR="$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3"
 
 NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
+K8S_CA_CERT_FILE="${K8S_CA_CERT_FILE:-$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority}')}"
+if [ -z "$K8S_CA_CERT_FILE" ]; then
+    K8S_CA_CERT_FILE="/tmp/spark-k8s-ca.crt"
+    kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > "$K8S_CA_CERT_FILE"
+fi
+K8S_SUBMISSION_TOKEN_FILE="/tmp/spark-k8s-submission.token"
+kubectl create token "$SERVICE_ACCOUNT" -n "$NAMESPACE" > "$K8S_SUBMISSION_TOKEN_FILE"
+chmod 600 "$K8S_SUBMISSION_TOKEN_FILE"
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-stream-predict:v1.0"
 IMAGE_PULL_POLICY="${IMAGE_PULL_POLICY:-Always}"
 APP_FILE="local:///opt/spark/work-dir/app/main.py"
@@ -51,6 +59,9 @@ fi
     --conf spark.kubernetes.container.image="$IMAGE" \
     --conf spark.kubernetes.container.image.pullPolicy="$IMAGE_PULL_POLICY" \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
+    --conf spark.kubernetes.authenticate.caCertFile="$K8S_CA_CERT_FILE" \
+    --conf spark.kubernetes.authenticate.submission.caCertFile="$K8S_CA_CERT_FILE" \
+    --conf spark.kubernetes.authenticate.submission.oauthTokenFile="$K8S_SUBMISSION_TOKEN_FILE" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
