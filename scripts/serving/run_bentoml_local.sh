@@ -15,7 +15,8 @@ export MLFLOW_S3_ENDPOINT_URL="${MLFLOW_S3_ENDPOINT_URL:-http://localhost:9000}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-minioadmin}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-minioadmin}"
 export MODEL_NAME="${MODEL_NAME:-XGB_NYC_Fare}"
-export MODEL_ALIAS="${MODEL_ALIAS:-production}"
+export MODEL_STAGE="${MODEL_STAGE:-Production}"
+export MODEL_ALIAS="${MODEL_ALIAS:-}"
 
 cd "${REPO_ROOT}/apps/serving/bentoml"
 
