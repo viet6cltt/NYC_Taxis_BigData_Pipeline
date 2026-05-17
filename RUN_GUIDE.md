@@ -1,126 +1,147 @@
-# Hướng dẫn chạy NYC Taxis BigData Pipeline từng bước (Step-by-Step)
+# Run Guide - NYC Taxi Streaming Lakehouse
 
-Tài liệu này hướng dẫn cách khởi chạy và kiểm tra toàn bộ Data & ML Pipeline cho dự án NYC Taxi từ đầu đến cuối trên môi trường cục bộ (K3s Kubernetes).
+Guide này dùng cho nhánh `dev` sau khi gộp streaming mới, BentoML và BI/Superset.
 
----
+Flow chạy chi tiết nằm ở [RUN_FLOW.md](RUN_FLOW.md). File này chỉ giữ thứ tự triển khai ngắn gọn để tránh dùng nhầm pipeline local cũ.
 
-## Bước 1: Khởi động Infrastructure (K3s)
-
-Pipeline cần các dịch vụ cơ bản: **MinIO** (Data Lake), **Kafka** (Streaming Source), và **MLflow** (Model Registry).
-
-1. Cài đặt các thành phần trên cluster K3s:
-   ```bash
-   export KUBECONFIG=~/.kube/config
-
-   # 1. Cài đặt MinIO
-   kubectl apply -f infra/k8s/minio/minio.yaml
-   
-   # 2. Cài đặt Strimzi (Kafka Operator) và Kafka Cluster
-   kubectl create namespace kafka
-   kubectl apply -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka
-   # Chờ Strimzi chạy xong, sau đó cài đặt Kafka:
-   kubectl apply -f infra/k8s/ingestion/kafka/kafka-cluster.yaml
-   kubectl apply -f infra/k8s/ingestion/kafka/kafka-topics.yaml
-
-   # 3. Cài đặt MLflow
-   kubectl apply -f infra/k8s/mlflow/mlflow.yaml
-   ```
-
-2. Port-forward các dịch vụ ra localhost (để có thể truy cập UI và chạy Spark local):
-   ```bash
-   # Port-forward MinIO (Data) và MinIO Console (UI)
-   kubectl port-forward -n minio svc/minio-api 9000:9000 &
-   kubectl port-forward -n minio svc/minio-ui 30001:30001 &
-
-   # Port-forward MLflow Tracking Server
-   kubectl port-forward -n mlflow svc/mlflow 5000:5000 &
-   ```
-   > **UI Dashboard:**
-   > - MinIO Console: `http://localhost:30001` (Tài khoản: `minioadmin` / `minioadmin`)
-   > - MLflow UI: `http://localhost:5000`
-
----
-
-## Bước 2: Chuẩn bị Bucket và Môi trường
-
-1. Tạo các bucket trên MinIO để chứa dữ liệu:
-   ```bash
-   kubectl run minio-init --image=minio/mc:latest --restart=Never -n minio --rm -it -- sh -c "
-     mc alias set local http://minio-api:9000 minioadmin minioadmin;
-     mc mb --ignore-existing local/bronze;
-     mc mb --ignore-existing local/silver;
-     mc mb --ignore-existing local/gold;
-     mc mb --ignore-existing local/mlflow;
-   "
-   ```
-
-2. Cài đặt các thư viện Python cần thiết:
-   ```bash
-   pip install pyspark==3.5.3 delta-spark==3.2.0 mlflow==2.13.0 xgboost scikit-learn pandas numpy pyarrow boto3
-   ```
-
----
-
-## Bước 3: Chạy Data Pipeline (Bronze -> Silver -> Gold) & Training
-
-Chúng ta có một file script tổng hợp chạy cục bộ (kết nối với K3s infra) để thực thi toàn bộ luồng Batch Ingestion và ML Training.
-
-1. Khởi chạy Pipeline:
-   ```bash
-   # Chạy script pipeline (sẽ mất khoảng 5-10 phút tuỳ vào cấu hình máy)
-   # Các biến môi trường AWS_* được truyền để MLflow có thể lưu model lên MinIO S3
-   AWS_ACCESS_KEY_ID=minioadmin \
-   AWS_SECRET_ACCESS_KEY=minioadmin \
-   MLFLOW_S3_ENDPOINT_URL=http://localhost:9000 \
-   python3 scripts/run_pipeline_local.py
-   ```
-
-2. Các bước chính hiện tại:
-   - **Bronze:** Raw started/completed events ở `s3a://lakehouse/bronze/nyc-taxi/*`.
-   - **Silver:** Clean started/completed + lifecycle ở `s3a://lakehouse/silver/nyc-taxi/*`.
-   - **Gold route estimates:** `bash scripts/training/run_feature_engineering.sh route_estimates`.
-   - **Gold features:** `bash scripts/training/run_feature_engineering.sh features`.
-   - **ML Training:** Dùng XGBoost để huấn luyện mô hình dự đoán giá cước (`fare_amount`). Lưu model artifacts lên **MLflow**.
-
-3. Sau khi chạy xong, hãy mở `http://localhost:5000` để xem kết quả Model XGBoost (R², MAE, RMSE) và check model đã được gán nhãn `production`.
-
----
-
-## Bước 4: Chạy Real-time Serving (Inference)
-
-Sau khi model đã sẵn sàng trên MLflow, bạn có thể triển khai hệ thống dự đoán theo thời gian thực (Real-time Streaming) và API.
-
-### 4.1. Khởi chạy Spark Streaming Inference Job
-Job này đọc Delta stream `silver/trip_started`, lookup `gold/ml/route_estimates`, áp dụng model MLflow và ghi prediction log ra Delta Lake.
+## 1. Chuẩn bị hạ tầng
 
 ```bash
-# Cần build route_estimates và train/promote model trước khi chạy job này
+kubectl apply -f infra/k8s/minio/minio.yaml
+kubectl apply -f infra/k8s/common/spark-rabc.yaml
+
+kubectl create namespace kafka --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka
+kubectl apply -f infra/k8s/ingestion/kafka/kafka-cluster.yaml
+kubectl apply -f infra/k8s/ingestion/kafka/kafka-topics.yaml
+
+kubectl apply -f infra/k8s/mlflow/mlflow.yaml
+```
+
+Tạo bucket chính:
+
+```bash
+kubectl run minio-init --image=minio/mc:latest --restart=Never -n minio --rm -it -- sh -c "
+  mc alias set local http://minio-api:9000 minioadmin minioadmin;
+  mc mb --ignore-existing local/lakehouse;
+  mc mb --ignore-existing local/mlflow;
+  mc mb --ignore-existing local/warehouse;
+"
+```
+
+## 2. Build images
+
+```bash
+bash scripts/images/build.sh all
+bash scripts/images/build_training.sh
+bash scripts/images/build_serving.sh
+```
+
+## 3. Historical path cho training
+
+```bash
+bash scripts/ingestion/run_batch.sh
+bash scripts/processing/run_silver.sh completed batch
+bash scripts/training/run_feature_engineering.sh route_estimates
+bash scripts/training/run_feature_engineering.sh features
+bash scripts/training/run_training.sh
+```
+
+Output chính:
+
+```text
+s3a://lakehouse/bronze/nyc-taxi/trip_completed
+s3a://lakehouse/silver/nyc-taxi/trip_completed
+s3a://lakehouse/silver/nyc-taxi/trip_lifecycle
+s3a://lakehouse/gold/ml/route_estimates
+s3a://lakehouse/gold/ml/features
+MLflow model: XGB_NYC_Fare / Production
+```
+
+## 4. Realtime path
+
+```bash
+bash scripts/ingestion/run_streaming.sh all
+bash scripts/processing/run_silver.sh started streaming
+bash scripts/processing/run_silver.sh completed streaming
 bash scripts/serving/run_stream_predict.sh
 ```
 
-### 4.2. Khởi chạy FastAPI Prediction Service
-Cung cấp REST API cho các ứng dụng Frontend.
+Output realtime:
+
+```text
+s3a://lakehouse/bronze/nyc-taxi/trip_started
+s3a://lakehouse/bronze/nyc-taxi/trip_completed
+s3a://lakehouse/silver/nyc-taxi/trip_started
+s3a://lakehouse/silver/nyc-taxi/trip_completed
+s3a://lakehouse/gold/ml/predictions
+```
+
+## 5. Monitoring ML
 
 ```bash
-cd apps/serving/fastapi
-pip install -r requirements.txt
-
-# Chạy server FastAPI
-MLFLOW_TRACKING_URI=http://localhost:5000 \
-MLFLOW_S3_ENDPOINT_URL=http://localhost:9000 \
-AWS_ACCESS_KEY_ID=minioadmin \
-AWS_SECRET_ACCESS_KEY=minioadmin \
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+bash scripts/training/run_feature_engineering.sh prediction_actuals
+bash scripts/training/run_feature_engineering.sh model_quality_daily
 ```
-> **Kiểm tra API:** Mở tài liệu API tại `http://localhost:8000/docs`. Bạn có thể gửi một POST request với thông tin điểm đón/trả và thời gian để nhận lại `predicted_fare`.
 
----
+Output:
 
-## Xử lý sự cố (Troubleshooting)
+```text
+s3a://lakehouse/gold/ml/prediction_actuals
+s3a://lakehouse/gold/monitoring/model_quality_daily
+```
 
-1. **Lỗi `Unable to locate credentials` khi chạy XGBoost Training:** 
-   Đảm bảo bạn đã truyền đủ 3 biến môi trường `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, và `MLFLOW_S3_ENDPOINT_URL` trước khi gọi python script.
-2. **PySpark OOM (Out of Memory):** 
-   Dữ liệu Gold năm 2024 cực lớn (~41 triệu dòng). Script hiện tại đang sample 10% (khoảng 4 triệu dòng) để build Pandas DataFrame cho XGBoost. Nếu vẫn lỗi OOM, có thể sửa `scripts/run_pipeline_local.py` và giảm tham số `fraction=0.1` xuống `0.05` hoặc `0.01`.
-3. **Pods kẹt ở trạng thái Pending:**
-   Chạy `kubectl describe pod <tên-pod> -n <namespace>` để xem lỗi. Thường do thiếu CPU/RAM trên node.
+## 6. Serving API
+
+FastAPI:
+
+```bash
+kubectl apply -f infra/k8s/serving/fastapi_deployment.yaml
+```
+
+BentoML:
+
+```bash
+kubectl apply -f infra/k8s/serving/bentoml_deployment.yaml
+```
+
+Local BentoML:
+
+```bash
+bash scripts/serving/run_bentoml_local.sh
+```
+
+API input dùng `estimated_trip_distance` và `estimated_trip_duration_seconds`, không dùng actual distance/duration vì prediction xảy ra tại thời điểm `trip_started`.
+
+## 7. BI với Superset
+
+Chạy sau khi đã có Silver/Gold Delta tables:
+
+```bash
+bash scripts/bi/setup_bi.sh
+
+kubectl port-forward -n lakehouse svc/superset 8088:8088 &
+kubectl port-forward -n lakehouse svc/trino 8080:8080 &
+
+python3 scripts/bi/create_dashboard.py
+```
+
+Superset SQL Lab dùng database:
+
+```text
+Trino - NYC Taxi Lakehouse
+```
+
+Các schema chính:
+
+```text
+delta.silver_nyc_taxi
+delta.gold_ml
+delta.gold_monitoring
+```
+
+## Notes
+
+- Flow local cũ đã được bỏ để tránh nhầm với streaming lakehouse mới.
+- Historical backfill nên dùng `bash scripts/processing/run_silver.sh completed batch`, không dùng default streaming cho dữ liệu vài GB.
+- Nếu rebuild sạch, xóa cả data path và checkpoint path tương ứng trong bucket `lakehouse`.

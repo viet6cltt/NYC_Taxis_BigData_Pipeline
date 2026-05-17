@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyc-taxi-airflow
+  namespace: lakehouse
+  labels:
+    app: nyc-taxi-airflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nyc-taxi-airflow
+  template:
+    metadata:
+      labels:
+        app: nyc-taxi-airflow
+    spec:
+      serviceAccountName: spark-user
+      containers:
+        - name: airflow
+          image: 10.148.0.2:5000/nyc-taxi-airflow:v1.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AIRFLOW__CORE__LOAD_EXAMPLES
+              value: "false"
+            - name: AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION
+              value: "false"
+            - name: AIRFLOW__CORE__EXECUTOR
+              value: "SequentialExecutor"
+            - name: AIRFLOW__WEBSERVER__EXPOSE_CONFIG
+              value: "true"
+            - name: NYC_TAXI_IMAGE_REGISTRY
+              value: "10.148.0.2:5000"
+            - name: NYC_TAXI_IMAGE_TAG
+              value: "v1.0"
+            - name: NYC_TAXI_SPARK_NAMESPACE
+              value: "lakehouse"
+            - name: NYC_TAXI_SPARK_SERVICE_ACCOUNT
+              value: "spark-user"
+            - name: NYC_TAXI_SPARK_IMAGE_PULL_POLICY
+              value: "Always"
+            - name: NYC_TAXI_MINIO_ENDPOINT
+              value: "http://minio-api.storage.svc.cluster.local:9000"
+            - name: NYC_TAXI_MINIO_ACCESS_KEY
+              value: "minioadmin"
+            - name: NYC_TAXI_MINIO_SECRET_KEY
+              value: "minioadmin"
+            - name: NYC_TAXI_LIFECYCLE_OVERLAP_MINUTES
+              value: "10"
+            - name: NYC_TAXI_LIFECYCLE_TTL_HOURS
+              value: "48"
+          command:
+            - /bin/bash
+            - -lc
+            - |
+              set -euo pipefail
+              airflow db migrate
+              airflow users create \
+                --username admin \
+                --password admin \
+                --firstname NYC \
+                --lastname Taxi \
+                --role Admin \
+                --email admin@example.com || true
+              airflow scheduler &
+              exec airflow webserver --host 0.0.0.0 --port 8080
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyc-taxi-airflow
+  namespace: lakehouse
+  labels:
+    app: nyc-taxi-airflow
+spec:
+  type: ClusterIP
+  selector:
+    app: nyc-taxi-airflow
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyc-taxi-airflow-nodeport
+  namespace: lakehouse
+  labels:
+    app: nyc-taxi-airflow
+spec:
+  type: NodePort
+  selector:
+    app: nyc-taxi-airflow
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30007
