@@ -14,7 +14,7 @@ os.environ.setdefault("AWS_SECRET_ACCESS_KEY", MINIO_SECRET_KEY)
 GOLD_FEATURES_PATH = os.getenv("GOLD_FEATURES_PATH", "s3a://lakehouse/gold/ml/features")
 
 # MLflow
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.mlflow.svc.cluster.local:5000")
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.mlops.svc.cluster.local:5000")
 EXPERIMENT_NAME     = os.getenv("EXPERIMENT_NAME", "NYC_Taxi_Fare_Prediction")
 MODEL_NAME          = os.getenv("MODEL_NAME", "XGB_NYC_Fare")
 

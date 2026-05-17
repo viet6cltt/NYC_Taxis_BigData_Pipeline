@@ -55,7 +55,7 @@ The **NYC Taxis BigData Pipeline** is a comprehensive, scalable data engineering
 | ML Framework | XGBoost, scikit-learn |
 | ML Tracking | MLflow (Experiments + Model Registry) |
 | Serving API | FastAPI + Uvicorn |
-| Orchestration | Kubernetes (K8s), Spark-on-K8s |
+| Orchestration | Kubernetes (K8s), Spark-on-K8s, Airflow |
 | Language | Python 3.11 |
 
 ## Directory Structure
@@ -75,10 +75,13 @@ NYC_Taxis_BigData_Pipeline/
 │   ├── training/
 │   │   ├── feature_engineering/          # Spark batch: Silver → Gold features
 │   │   └── train_xgboost/               # Train XGBoost + register in MLflow
+│   ├── orchestration/
+│   │   └── airflow/                     # Airflow DAGs for scheduled jobs
 │   └── serving/
 │       ├── stream_predict/               # Spark Streaming: Silver started → XGBoost → Gold
 │       └── fastapi/                      # FastAPI REST API: POST /predict
 ├── infra/k8s/
+│   ├── airflow/                          # Airflow standalone demo deployment
 │   ├── common/                           # Namespaces, RBAC, NFS PV/PVCs
 │   ├── ingestion/                        # Kafka cluster, topics, UI
 │   ├── minio/                            # MinIO object storage
@@ -101,6 +104,7 @@ bash scripts/images/build.sh           # Ingestion images
 bash scripts/images/build_batch.sh     # Batch ingestion image
 bash scripts/images/build_training.sh  # Training images (new)
 bash scripts/images/build_serving.sh   # Serving images (new)
+bash scripts/images/build_airflow.sh   # Airflow DAG image
 ```
 
 ### 2. Infrastructure Setup
@@ -140,6 +144,16 @@ kubectl apply -f infra/k8s/serving/fastapi_deployment.yaml
 # Start Spark Streaming inference (Silver started → route lookup → Gold predictions)
 bash scripts/serving/run_stream_predict.sh
 ```
+
+### 6.1 Run Airflow Lifecycle Merge
+```bash
+kubectl apply -f infra/k8s/airflow/airflow.yaml
+kubectl port-forward -n lakehouse svc/nyc-taxi-airflow 8081:8080
+```
+
+Airflow UI: `http://localhost:8081` (`admin` / `admin`).
+
+Main DAG: `nyc_taxi_lifecycle_merge`.
 
 ### 7. Call the Prediction API
 ```bash

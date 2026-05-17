@@ -12,7 +12,7 @@ spec:
   storageClassName: ""
   nfs:
     path: /data/nyc-taxi-data # Đường dẫn trên Fedora
-    server: 100.76.120.58    # IP Tailscale của Fedora
+    server: 10.148.0.2    # IP Tailscale của Fedora
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

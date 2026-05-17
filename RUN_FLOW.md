@@ -8,6 +8,7 @@ File này ghi thứ tự chạy chuẩn từ dữ liệu raw đến training, re
 bash scripts/images/build.sh all
 bash scripts/images/build_training.sh
 bash scripts/images/build_serving.sh
+bash scripts/images/build_airflow.sh
 ```
 
 Nếu chỉ sửa một phần:
@@ -17,6 +18,7 @@ bash scripts/images/build.sh batch
 bash scripts/images/build.sh silver_consumer
 bash scripts/images/build_training.sh
 bash scripts/images/build_serving.sh
+bash scripts/images/build_airflow.sh
 ```
 
 ## 1. Historical 2024 -> Bronze Completed
@@ -133,7 +135,47 @@ s3a://lakehouse/silver/nyc-taxi/trip_completed
 s3a://lakehouse/silver/nyc-taxi/trip_lifecycle
 ```
 
-## 8. Realtime Prediction
+## 8. Airflow Lifecycle Merge
+
+Airflow chạy lifecycle merge định kỳ mỗi 5 phút:
+
+```bash
+kubectl apply -f infra/k8s/airflow/airflow.yaml
+```
+
+UI:
+
+```bash
+kubectl port-forward -n lakehouse svc/nyc-taxi-airflow 8081:8080
+```
+
+Truy cập:
+
+```text
+http://localhost:8081
+admin / admin
+```
+
+DAG chính:
+
+```text
+nyc_taxi_lifecycle_merge
+```
+
+DAG truyền window theo Airflow `data_interval_start` / `data_interval_end`, có overlap 10 phút để tránh bỏ sót dữ liệu đến muộn:
+
+```text
+LIFECYCLE_MERGE_SINCE_TIMESTAMP = data_interval_start - 10 minutes
+LIFECYCLE_MERGE_UNTIL_TIMESTAMP = data_interval_end
+```
+
+Nếu cần backfill lifecycle lần đầu cho toàn bộ dữ liệu Silver, chạy manual:
+
+```bash
+bash scripts/processing/run_lifecycle_merge.sh
+```
+
+## 9. Realtime Prediction
 
 Chạy sau khi đã có:
 
@@ -164,7 +206,7 @@ Output:
 s3a://lakehouse/gold/ml/predictions
 ```
 
-## 9. Prediction Actuals
+## 10. Prediction Actuals
 
 Chạy sau khi có cả predictions và completed actuals:
 
@@ -178,7 +220,7 @@ Output:
 s3a://lakehouse/gold/ml/prediction_actuals
 ```
 
-## 10. Model Quality Daily
+## 11. Model Quality Daily
 
 ```bash
 bash scripts/training/run_feature_engineering.sh model_quality_daily
@@ -190,7 +232,7 @@ Output:
 s3a://lakehouse/gold/monitoring/model_quality_daily
 ```
 
-## 11. FastAPI
+## 12. FastAPI
 
 ```bash
 kubectl apply -f infra/k8s/serving/fastapi_deployment.yaml
@@ -210,7 +252,7 @@ FastAPI load model từ MLflow. Request `/predict` dùng estimated distance/dura
 }
 ```
 
-## 12. BentoML
+## 13. BentoML
 
 BentoML dùng cùng MLflow model và cùng feature contract `estimated_*` như FastAPI.
 
@@ -224,7 +266,7 @@ Chạy local nếu cần test nhanh:
 bash scripts/serving/run_bentoml_local.sh
 ```
 
-## 13. BI with Trino + Superset
+## 14. BI with Trino + Superset
 
 Chạy sau khi Silver/Gold Delta tables đã tồn tại:
 
