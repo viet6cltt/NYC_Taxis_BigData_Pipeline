@@ -15,7 +15,10 @@ apps/spark_jars/*
 learning.md
 
 .env
+_local_bi_lakehouse/
 
 PLAN.md
+_local_delta_store/
+
 
 .agent/*
