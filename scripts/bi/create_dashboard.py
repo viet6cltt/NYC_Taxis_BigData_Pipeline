@@ -304,9 +304,9 @@ SELECT
     ROUND(AVG(prediction_error), 2) AS bias
 FROM delta.gold_ml.prediction_actuals
 GROUP BY pulocation_id, dolocation_id
-HAVING COUNT(*) >= 10
+HAVING COUNT(*) >= 1
 """,
-        "description": "Route-level production error hotspots",
+        "description": "Route-level error hotspots; preview keeps single-observation routes visible",
     },
 }
 
@@ -317,7 +317,15 @@ def ensure_dataset(db_id: int, key: str) -> int:
     resp = api("GET", f"/api/v1/dataset/?q={filter_q('table_name', name)}")
     if resp.get("count", 0) > 0:
         ds_id = resp["result"][0]["id"]
-        print(f"  OK Dataset '{name}' exists (id={ds_id})")
+        api("PUT", f"/api/v1/dataset/{ds_id}", {
+            "database_id": db_id,
+            "table_name": name,
+            "sql": cfg["sql"].strip(),
+            "schema": cfg["schema"],
+            "is_managed_externally": False,
+        })
+        api("PUT", f"/api/v1/dataset/{ds_id}/refresh")
+        print(f"  OK Dataset '{name}' exists (id={ds_id}); SQL and columns refreshed")
         return ds_id
     payload = {
         "database": db_id,
@@ -333,7 +341,8 @@ def ensure_dataset(db_id: int, key: str) -> int:
             return resp2["result"][0]["id"]
         raise RuntimeError(f"Cannot create dataset '{name}': {resp}")
     ds_id = resp["id"]
-    print(f"  OK Dataset '{name}' created (id={ds_id})")
+    api("PUT", f"/api/v1/dataset/{ds_id}/refresh")
+    print(f"  OK Dataset '{name}' created (id={ds_id}); columns refreshed")
     return ds_id
 
 
@@ -470,6 +479,16 @@ def ensure_dashboard(title: str, slug: str, chart_ids: dict, rows: list[list[tup
             did = resp2["result"][0]["id"]
         else:
             did = created["id"]
+        # Superset only materializes dashboard -> chart relations from
+        # json_metadata.positions during the update path. A fresh POST stores the
+        # layout but leaves dashboard_slices empty, so the UI renders orphaned
+        # chart containers. Follow creation with the same update payload used for
+        # existing dashboards to bind the slices immediately.
+        api("PUT", f"/api/v1/dashboard/{did}", {
+            "position_json": payload["position_json"],
+            "json_metadata": metadata,
+            "published": True,
+        })
         print(f"  OK Dashboard '{title}' ready (id={did})")
     return did
 

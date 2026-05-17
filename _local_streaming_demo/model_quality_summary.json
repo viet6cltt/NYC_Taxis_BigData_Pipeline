@@ -1,0 +1,12 @@
+{
+  "prediction_count": 30,
+  "model_name": "XGB_NYC_Fare",
+  "model_version": "3",
+  "model_stage": "Production",
+  "mae": 3.0873333333333344,
+  "rmse": 5.4486108321296,
+  "r2": 0.9396599586780415,
+  "predictions_jsonl": "/teamspace/studios/this_studio/NYC_Taxis_BigData_Pipeline/_local_streaming_demo/predictions.jsonl",
+  "predictions_csv": "/teamspace/studios/this_studio/NYC_Taxis_BigData_Pipeline/_local_streaming_demo/predictions.csv",
+  "prediction_actuals_csv": "/teamspace/studios/this_studio/NYC_Taxis_BigData_Pipeline/_local_streaming_demo/prediction_actuals.csv"
+}

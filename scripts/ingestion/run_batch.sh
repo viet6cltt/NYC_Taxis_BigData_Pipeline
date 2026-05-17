@@ -12,7 +12,11 @@ fi
 # Dynamically get K8S_MASTER from kubectl to match kubeconfig exactly
 K8S_API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
 K8S_MASTER="k8s://${K8S_API_SERVER}"
-
+K8S_CA_CERT_FILE="${K8S_CA_CERT_FILE:-$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority}')}"
+if [ -z "$K8S_CA_CERT_FILE" ]; then
+    K8S_CA_CERT_FILE="/tmp/spark-k8s-ca.crt"
+    kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > "$K8S_CA_CERT_FILE"
+fi
 SPARK_VERSION="4.1.1"
 SPARK_DIR="$HOME/Downloads/spark-${SPARK_VERSION}-bin-hadoop3"
 SPARK_TGZ="${SPARK_DIR}.tgz"
@@ -21,6 +25,9 @@ SPARK_URL="https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${
 # Kubernetes
 NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
+K8S_SUBMISSION_TOKEN_FILE="/tmp/spark-k8s-submission.token"
+kubectl create token "$SERVICE_ACCOUNT" -n "$NAMESPACE" > "$K8S_SUBMISSION_TOKEN_FILE"
+chmod 600 "$K8S_SUBMISSION_TOKEN_FILE"
 
 # Image
 IMAGE="nyc-taxi-batch:v1.0"
@@ -62,8 +69,9 @@ echo "    OUTPUT_PATH=${OUTPUT_PATH}"
     --conf spark.kubernetes.container.image="${REGISTRY}/${IMAGE}" \
     --conf spark.kubernetes.container.image.pullPolicy=Always \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
-    --conf spark.kubernetes.authenticate.caCertFile="" \
-    --conf spark.kubernetes.authenticate.submission.caCertFile="" \
+    --conf spark.kubernetes.authenticate.caCertFile="$K8S_CA_CERT_FILE" \
+    --conf spark.kubernetes.authenticate.submission.caCertFile="$K8S_CA_CERT_FILE" \
+    --conf spark.kubernetes.authenticate.submission.oauthTokenFile="$K8S_SUBMISSION_TOKEN_FILE" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
     \
     --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.mount.path=/data \
@@ -89,7 +97,7 @@ echo "    OUTPUT_PATH=${OUTPUT_PATH}"
     \
     --conf spark.driver.memory=1g \
     --conf spark.executor.instances=1 \
-    --conf spark.executor.memory=1g \
+    --conf spark.executor.memory=3g \
     --conf spark.kubernetes.driver.request.cores=1 \
     --conf spark.kubernetes.driver.limit.cores=2 \
     --conf spark.kubernetes.executor.request.cores=1 \

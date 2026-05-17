@@ -1,0 +1,29 @@
+{
+  "input": "/teamspace/studios/this_studio/NYC_Taxis_BigData_Pipeline/data/yellow_data/2024/yellow_tripdata_2024-01.parquet",
+  "rows_requested": 10000,
+  "bronze_rows": 10000,
+  "silver_completed_rows": 9564,
+  "route_estimate_rows": 6796,
+  "gold_feature_rows": 9564,
+  "outputs": {
+    "bronze_completed": "/teamspace/studios/this_studio/NYC_Taxis_BigData_Pipeline/_local_small_pipeline/bronze_completed.parquet",
+    "silver_completed": "/teamspace/studios/this_studio/NYC_Taxis_BigData_Pipeline/_local_small_pipeline/silver_completed.parquet",
+    "gold_route_estimates": "/teamspace/studios/this_studio/NYC_Taxis_BigData_Pipeline/_local_small_pipeline/gold_route_estimates.parquet",
+    "gold_features": "/teamspace/studios/this_studio/NYC_Taxis_BigData_Pipeline/_local_small_pipeline/gold_features.parquet"
+  },
+  "mlflow": {
+    "tracking_uri": "http://127.0.0.1:5000",
+    "experiment_name": "NYC_Taxi_Fare_Prediction",
+    "model_name": "XGB_NYC_Fare",
+    "run_id": "687c1981821c42bdb08406585fe2ee61",
+    "model_version": "3",
+    "metrics": {
+      "train_r2": 0.9017169558542972,
+      "train_rmse": 4.53772378070089,
+      "train_mae": 2.1411273596143743,
+      "test_r2": 0.8417594413383545,
+      "test_rmse": 5.190175453858843,
+      "test_mae": 2.5446299799686316
+    }
+  }
+}

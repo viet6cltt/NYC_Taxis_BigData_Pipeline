@@ -27,6 +27,14 @@ K8S_API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster
 K8S_MASTER="k8s://${K8S_API_SERVER}"
 NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
+K8S_CA_CERT_FILE="${K8S_CA_CERT_FILE:-$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority}')}"
+if [ -z "$K8S_CA_CERT_FILE" ]; then
+    K8S_CA_CERT_FILE="/tmp/spark-k8s-ca.crt"
+    kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > "$K8S_CA_CERT_FILE"
+fi
+K8S_SUBMISSION_TOKEN_FILE="/tmp/spark-k8s-submission.token"
+kubectl create token "$SERVICE_ACCOUNT" -n "$NAMESPACE" > "$K8S_SUBMISSION_TOKEN_FILE"
+chmod 600 "$K8S_SUBMISSION_TOKEN_FILE"
 
 GOLD_JOB="${1:-features}"
 SILVER_COMPLETED_PATH="${SILVER_COMPLETED_PATH:-s3a://lakehouse/silver/nyc-taxi/trip_completed}"
@@ -79,8 +87,9 @@ echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
     --conf spark.kubernetes.container.image="$IMAGE" \
     --conf spark.kubernetes.container.image.pullPolicy=Always \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
-    --conf spark.kubernetes.authenticate.caCertFile="" \
-    --conf spark.kubernetes.authenticate.submission.caCertFile="" \
+    --conf spark.kubernetes.authenticate.caCertFile="$K8S_CA_CERT_FILE" \
+    --conf spark.kubernetes.authenticate.submission.caCertFile="$K8S_CA_CERT_FILE" \
+    --conf spark.kubernetes.authenticate.submission.oauthTokenFile="$K8S_SUBMISSION_TOKEN_FILE" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \

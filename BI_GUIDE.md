@@ -86,6 +86,47 @@ TRINO_SQLALCHEMY_URI=trino://hive@trino.lakehouse.svc.cluster.local:8080/delta \
 python3 scripts/bi/create_dashboard.py
 ```
 
+### Local AI / MCP Preview
+
+Để test AI assistant ngay trên demo Docker local:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+Endpoint:
+
+```text
+Superset UI: http://localhost:8088
+MCP server:  http://localhost:5008/mcp
+Login UI:    admin / admin
+```
+
+Ghi chú nhỏ: local compose map MLflow ra `http://localhost:5001` mặc định để tránh đụng registry local thường chiếm cổng `5000`. Nếu muốn đổi, set `MLFLOW_HOST_PORT` trước khi chạy compose.
+
+Demo local dùng development mode:
+
+```python
+MCP_AUTH_ENABLED = False
+MCP_DEV_USERNAME = "admin"
+```
+
+Nghĩa là mọi thao tác AI chạy dưới quyền `admin`; cấu hình này chỉ dành cho máy local, không dùng nguyên xi cho môi trường public.
+
+Ví dụ cấu hình cho Claude Desktop hoặc client MCP local:
+
+```json
+{
+  "mcpServers": {
+    "superset": {
+      "url": "http://localhost:5008/mcp"
+    }
+  }
+}
+```
+
+Nếu muốn nối bằng ChatGPT, cần expose MCP server qua một URL HTTPS public trước; `localhost` chỉ phù hợp với client chạy cùng máy.
+
 ## Sample Query
 
 ```sql
