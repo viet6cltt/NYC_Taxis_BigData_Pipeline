@@ -50,6 +50,42 @@ Tạo dashboard mẫu:
 python3 scripts/bi/create_dashboard.py
 ```
 
+## Local BI Preview
+
+Khi chưa bật máy chủ dữ liệu thật, có thể tạo bộ Delta tables local theo đúng contract production rồi chạy toàn bộ BI stack:
+
+```bash
+python3 scripts/bi/bootstrap_local_lakehouse.py
+docker compose -f docker-compose.dev.yml up -d
+python3 scripts/bi/create_dashboard.py
+```
+
+Script bootstrap dựng dữ liệu preview cho:
+
+```text
+delta.silver_nyc_taxi.trip_completed
+delta.silver_nyc_taxi.trip_lifecycle
+delta.gold_ml.route_estimates
+delta.gold_ml.features
+delta.gold_ml.predictions
+delta.gold_ml.prediction_actuals
+delta.gold_monitoring.model_quality_daily
+```
+
+Đây là dữ liệu preview sinh từ sample local, không phải kết quả model production thật; mục đích là để thiết kế và kiểm tra dashboard trước khi lakehouse thật chạy.
+
+Script mặc định dùng:
+
+- `TRINO_URL=http://localhost:8080` để host machine kiểm tra health.
+- `TRINO_SQLALCHEMY_URI=trino://trino@trino:8080/delta` để **Superset container** kết nối tới service Trino trong Docker Compose.
+
+Nếu chạy với K3s + port-forward, dùng:
+
+```bash
+TRINO_SQLALCHEMY_URI=trino://hive@trino.lakehouse.svc.cluster.local:8080/delta \
+python3 scripts/bi/create_dashboard.py
+```
+
 ## Sample Query
 
 ```sql
@@ -68,11 +104,30 @@ Xem thêm query mẫu tại [scripts/bi/sample_queries.sql](scripts/bi/sample_qu
 
 ## Scope Dashboard
 
-Dashboard v1 tập trung chứng minh hệ thống hoạt động:
+Script `scripts/bi/create_dashboard.py` tạo 3 dashboard riêng để mỗi dashboard kể một câu chuyện rõ:
 
-- completed trips và revenue theo tháng/giờ từ `trip_lifecycle` để tránh duplicate event.
-- top pickup zones và routes.
-- lifecycle status từ `trip_lifecycle`.
-- model quality daily nếu đã chạy delayed-label monitoring.
+1. **NYC Taxi - Business Overview**
+   - completed trips, revenue, avg fare
+   - xu hướng tháng, nhu cầu theo giờ
+   - top routes, payment mix, lifecycle status
+   - nguồn chính: `delta.silver_nyc_taxi.trip_lifecycle`
 
-BI nâng cao/star schema chi tiết có thể làm ở phase sau.
+2. **NYC Taxi - Realtime Prediction Ops**
+   - tổng số prediction, avg predicted fare
+   - prediction volume theo ngày/giờ
+   - tỷ lệ fallback `route_time` / `route` / `global`
+   - volume theo model version, route coverage
+   - nguồn chính: `delta.gold_ml.predictions`, `delta.gold_ml.route_estimates`
+
+3. **NYC Taxi - Model Quality**
+   - MAE, RMSE, bias, label delay
+   - predicted fare vs actual fare
+   - error theo `estimate_level`
+   - top route có lỗi cao
+   - nguồn chính: `delta.gold_ml.prediction_actuals`, `delta.gold_monitoring.model_quality_daily`
+
+Ý đồ thiết kế:
+
+- **Silver** giữ vai trò “business truth”.
+- **Gold** giữ vai trò “ML serving + monitoring truth”.
+- Khi dữ liệu realtime chưa có, dashboard business vẫn hữu ích; hai dashboard Gold sẽ đầy dần khi `predictions`, `prediction_actuals`, `model_quality_daily` xuất hiện.

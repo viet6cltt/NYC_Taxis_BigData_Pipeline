@@ -407,6 +407,8 @@ def build_prediction_actuals(predictions_df: DataFrame, completed_df: DataFrame)
         "estimated_speed",
         "actual_trip_distance",
         "actual_trip_duration_seconds",
+        "pulocation_id",
+        "dolocation_id",
         "estimate_level",
         "route_sample_count",
         "pickup_datetime",

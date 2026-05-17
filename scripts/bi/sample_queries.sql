@@ -114,3 +114,36 @@ SELECT
     bias
 FROM delta.gold_monitoring.model_quality_daily
 ORDER BY metric_date DESC;
+
+-- 12. Realtime prediction coverage by estimate fallback level
+SELECT
+    estimate_level,
+    COUNT(*) AS prediction_count,
+    ROUND(AVG(predicted_fare_amount), 2) AS avg_predicted_fare
+FROM delta.gold_ml.predictions
+GROUP BY estimate_level
+ORDER BY prediction_count DESC;
+
+-- 13. Model quality by estimate fallback level
+SELECT
+    estimate_level,
+    COUNT(*) AS evaluated_predictions,
+    ROUND(AVG(absolute_error), 2) AS mae,
+    ROUND(SQRT(AVG(squared_error)), 2) AS rmse,
+    ROUND(AVG(prediction_error), 2) AS bias
+FROM delta.gold_ml.prediction_actuals
+GROUP BY estimate_level
+ORDER BY mae DESC;
+
+-- 14. Route-level error hotspots
+SELECT
+    pulocation_id,
+    dolocation_id,
+    COUNT(*) AS evaluated_predictions,
+    ROUND(AVG(absolute_error), 2) AS mae,
+    ROUND(AVG(prediction_error), 2) AS bias
+FROM delta.gold_ml.prediction_actuals
+GROUP BY pulocation_id, dolocation_id
+HAVING COUNT(*) >= 10
+ORDER BY mae DESC
+LIMIT 10;

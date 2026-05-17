@@ -2,20 +2,26 @@
 """Create the NYC Taxi Superset dashboard through the Superset REST API."""
 
 import json
+import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
 # Config
-SUPERSET_URL  = "http://localhost:8088"
-TRINO_URL     = "http://localhost:8080"
-ADMIN_USER    = "admin"
-ADMIN_PASS    = "admin"
+SUPERSET_URL  = os.getenv("SUPERSET_URL", "http://localhost:8088")
+# URL này chỉ để script chạy từ host kiểm tra Trino có lên chưa.
+TRINO_URL     = os.getenv("TRINO_URL", "http://localhost:8080")
+ADMIN_USER    = os.getenv("SUPERSET_ADMIN_USER", "admin")
+ADMIN_PASS    = os.getenv("SUPERSET_ADMIN_PASS", "admin")
 
-# Trino SQLAlchemy URI: delta catalog, no auth in the dev stack.
-TRINO_URI = "trino://hive@localhost:8080/delta"
+# URI này được Superset dùng từ bên trong container/pod, không phải từ host.
+# Docker Compose mặc định resolve service name "trino".
+# Khi chạy trên K3s có thể override:
+#   TRINO_SQLALCHEMY_URI=trino://hive@trino.lakehouse.svc.cluster.local:8080/delta
+TRINO_URI = os.getenv("TRINO_SQLALCHEMY_URI", "trino://trino@trino:8080/delta")
 
 # HTTP helpers
 _token: str = ""
@@ -54,6 +60,11 @@ def api(method: str, path: str, body: Any = None) -> Any:
     return _req(method, path, body, token=_token)
 
 
+def filter_q(column: str, value: str) -> str:
+    raw = f"(filters:!((col:{column},opr:eq,value:'{value}')))"
+    return urllib.parse.quote(raw, safe="()!:,'")
+
+
 # Wait helpers
 def wait_http(url: str, label: str, retries: int = 40, delay: int = 5) -> bool:
     print(f"  Waiting for {label}...", end="", flush=True)
@@ -77,7 +88,22 @@ def ensure_database() -> int:
     for item in resp.get("result", []):
         if item.get("database_name") == db_name:
             db_id = item["id"]
-            print(f"  OK Database '{db_name}' already exists (id={db_id})")
+            api("PUT", f"/api/v1/database/{db_id}", {
+                "database_name": db_name,
+                "sqlalchemy_uri": TRINO_URI,
+                "expose_in_sqllab": True,
+                "allow_run_async": True,
+                "allow_ctas": False,
+                "allow_cvas": False,
+                "allow_dml": False,
+                "extra": json.dumps({
+                    "engine_params": {
+                        "connect_args": {"http_scheme": "http"}
+                    },
+                    "cost_estimate_enabled": False,
+                }),
+            })
+            print(f"  OK Database '{db_name}' already exists (id={db_id}); URI refreshed")
             return db_id
 
     payload = {
@@ -109,159 +135,178 @@ def ensure_database() -> int:
 
 # Step 2: Datasets (virtual SQL)
 DATASETS = {
-    "completed_trips": {
-        "dataset_name": "silver_lifecycle_completed_trips",
-        "sql": """
-SELECT
-    trip_id,
-    year_month,
-    trip_hour AS pickup_hour,
-    day_of_week(pickup_datetime) - 1 AS pickup_day_of_week,
-    CASE WHEN day_of_week(pickup_datetime) IN (6, 7) THEN 1 ELSE 0 END AS is_weekend,
-    passenger_count,
-    pulocation_id,
-    dolocation_id,
-    trip_distance,
-    trip_duration_seconds,
-    fare_amount,
-    total_amount,
-    payment_type_desc,
-    pickup_datetime,
-    dropoff_datetime
-FROM delta.silver_nyc_taxi.trip_lifecycle
-WHERE status = 'completed'
-""",
-        "description": "Completed trips from the lifecycle current-state table",
-    },
-    "monthly_summary": {
-        "dataset_name": "bi_monthly_summary",
+    "business_monthly": {
+        "dataset_name": "bi_business_monthly",
+        "schema": "silver_nyc_taxi",
         "sql": """
 SELECT
     year_month,
-    COUNT(*)                                        AS total_trips,
-    ROUND(AVG(fare_amount), 2)                      AS avg_fare,
-    ROUND(SUM(fare_amount), 0)                      AS total_revenue,
-    ROUND(AVG(trip_distance), 2)                    AS avg_distance_miles,
-    ROUND(AVG(CAST(trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_duration_min,
-    ROUND(AVG(trip_distance / NULLIF(CAST(trip_duration_seconds AS DOUBLE) / 3600.0, 0)), 1) AS avg_speed_mph
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(fare_amount), 2) AS avg_fare,
+    ROUND(AVG(trip_distance), 2) AS avg_distance_miles,
+    ROUND(AVG(CAST(trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_duration_min
 FROM delta.silver_nyc_taxi.trip_lifecycle
 WHERE status = 'completed'
 GROUP BY year_month
 ORDER BY year_month
 """,
-        "description": "Monthly aggregated summary",
+        "description": "Monthly business overview from completed lifecycle trips",
     },
-    "hourly_dist": {
-        "dataset_name": "bi_hourly_distribution",
+    "business_hourly": {
+        "dataset_name": "bi_business_hourly",
+        "schema": "silver_nyc_taxi",
         "sql": """
 SELECT
     trip_hour AS pickup_hour,
-    COUNT(*)                   AS trip_count,
-    ROUND(AVG(fare_amount), 2) AS avg_fare,
-    ROUND(AVG(trip_distance / NULLIF(CAST(trip_duration_seconds AS DOUBLE) / 3600.0, 0)), 1) AS avg_speed_mph
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(fare_amount), 2) AS avg_fare
 FROM delta.silver_nyc_taxi.trip_lifecycle
 WHERE status = 'completed'
 GROUP BY trip_hour
 ORDER BY trip_hour
 """,
-        "description": "Trip distribution by hour of day",
+        "description": "Completed trips and revenue by pickup hour",
     },
-    "dow_dist": {
-        "dataset_name": "bi_dow_distribution",
+    "business_routes": {
+        "dataset_name": "bi_business_routes",
+        "schema": "silver_nyc_taxi",
         "sql": """
 SELECT
-    day_of_week(pickup_datetime) - 1 AS pickup_day_of_week,
-    CASE day_of_week(pickup_datetime) - 1
-        WHEN 0 THEN 'Mon' WHEN 1 THEN 'Tue' WHEN 2 THEN 'Wed'
-        WHEN 3 THEN 'Thu' WHEN 4 THEN 'Fri' WHEN 5 THEN 'Sat'
-        ELSE 'Sun'
-    END                        AS day_name,
-    COUNT(*)                   AS trip_count,
+    pulocation_id,
+    dolocation_id,
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
     ROUND(AVG(fare_amount), 2) AS avg_fare
 FROM delta.silver_nyc_taxi.trip_lifecycle
 WHERE status = 'completed'
-GROUP BY 1, 2
-ORDER BY 1
+GROUP BY pulocation_id, dolocation_id
 """,
-        "description": "Trip distribution by day of week",
+        "description": "Route-level business metrics",
     },
-    "fare_buckets": {
-        "dataset_name": "bi_fare_buckets",
+    "business_payments": {
+        "dataset_name": "bi_business_payments",
+        "schema": "silver_nyc_taxi",
         "sql": """
 SELECT
-    CASE
-        WHEN fare_amount < 5   THEN '< $5'
-        WHEN fare_amount < 10  THEN '$5-$10'
-        WHEN fare_amount < 20  THEN '$10-$20'
-        WHEN fare_amount < 30  THEN '$20-$30'
-        WHEN fare_amount < 50  THEN '$30-$50'
-        ELSE '> $50'
-    END                        AS fare_bucket,
-    COUNT(*)                   AS trip_count
+    payment_type_desc,
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(tip_amount), 2) AS avg_tip
 FROM delta.silver_nyc_taxi.trip_lifecycle
 WHERE status = 'completed'
-GROUP BY 1
-ORDER BY MIN(fare_amount)
+GROUP BY payment_type_desc
 """,
-        "description": "Fare amount distribution buckets",
+        "description": "Payment mix for completed trips",
     },
-    "location_clusters": {
-        "dataset_name": "bi_location_clusters",
+    "business_status": {
+        "dataset_name": "bi_business_status",
+        "schema": "silver_nyc_taxi",
         "sql": """
-SELECT
-    (pulocation_id + dolocation_id) % 5 AS location_cluster,
-    COUNT(*)                         AS trip_count,
-    ROUND(AVG(fare_amount), 2)       AS avg_fare,
-    ROUND(AVG(trip_distance), 2)     AS avg_distance,
-    ROUND(AVG(trip_distance / NULLIF(CAST(trip_duration_seconds AS DOUBLE) / 3600.0, 0)), 1) AS avg_speed
-FROM delta.silver_nyc_taxi.trip_lifecycle
-WHERE status = 'completed'
-GROUP BY 1
-ORDER BY 1
-""",
-        "description": "Location cluster analysis",
-    },
-    "weekend_vs_weekday": {
-        "dataset_name": "bi_weekend_weekday",
-        "sql": """
-SELECT
-    CASE WHEN day_of_week(pickup_datetime) IN (6, 7) THEN 'Weekend' ELSE 'Weekday' END AS day_type,
-    COUNT(*)                         AS trip_count,
-    ROUND(AVG(fare_amount), 2)       AS avg_fare,
-    ROUND(AVG(trip_distance), 2)     AS avg_distance,
-    ROUND(AVG(trip_distance / NULLIF(CAST(trip_duration_seconds AS DOUBLE) / 3600.0, 0)), 1) AS avg_speed_mph
-FROM delta.silver_nyc_taxi.trip_lifecycle
-WHERE status = 'completed'
-GROUP BY 1
-ORDER BY 1
-""",
-        "description": "Weekend vs Weekday comparison",
-    },
-    "status_snapshot": {
-        "dataset_name": "bi_status_snapshot",
-        "sql": """
-SELECT
-    status,
-    COUNT(*) AS trip_count
+SELECT status, COUNT(*) AS trip_count
 FROM delta.silver_nyc_taxi.trip_lifecycle
 GROUP BY status
-ORDER BY status
 """,
-        "description": "Current trip lifecycle status counts",
+        "description": "Current lifecycle status distribution",
     },
-    "model_quality_daily": {
-        "dataset_name": "bi_model_quality_daily",
+    "prediction_daily": {
+        "dataset_name": "bi_prediction_daily",
+        "schema": "gold_ml",
+        "sql": """
+SELECT
+    DATE(prediction_timestamp) AS prediction_date,
+    model_name,
+    model_version,
+    estimate_level,
+    COUNT(*) AS prediction_count,
+    ROUND(AVG(predicted_fare_amount), 2) AS avg_predicted_fare,
+    ROUND(AVG(estimated_trip_distance), 2) AS avg_estimated_distance,
+    ROUND(AVG(CAST(estimated_trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_estimated_duration_min
+FROM delta.gold_ml.predictions
+GROUP BY 1, 2, 3, 4
+""",
+        "description": "Realtime prediction volume and estimate coverage by day",
+    },
+    "prediction_hourly": {
+        "dataset_name": "bi_prediction_hourly",
+        "schema": "gold_ml",
+        "sql": """
+SELECT
+    pickup_hour,
+    COUNT(*) AS prediction_count,
+    ROUND(AVG(predicted_fare_amount), 2) AS avg_predicted_fare
+FROM delta.gold_ml.predictions
+GROUP BY pickup_hour
+ORDER BY pickup_hour
+""",
+        "description": "Realtime predictions by pickup hour",
+    },
+    "route_coverage": {
+        "dataset_name": "bi_route_coverage",
+        "schema": "gold_ml",
+        "sql": """
+SELECT
+    estimate_level,
+    COUNT(*) AS lookup_rows,
+    ROUND(AVG(sample_count), 1) AS avg_sample_count,
+    ROUND(AVG(estimated_trip_distance), 2) AS avg_estimated_distance,
+    ROUND(AVG(CAST(estimated_trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_estimated_duration_min
+FROM delta.gold_ml.route_estimates
+GROUP BY estimate_level
+""",
+        "description": "Coverage and support size for route estimate fallback levels",
+    },
+    "quality_daily": {
+        "dataset_name": "bi_quality_daily",
         "schema": "gold_monitoring",
         "sql": """
 SELECT
     metric_date,
+    model_name,
+    model_version,
     prediction_count,
     mae,
     rmse,
-    bias
+    bias,
+    avg_predicted_fare,
+    avg_actual_fare,
+    avg_label_delay_seconds
 FROM delta.gold_monitoring.model_quality_daily
 """,
-        "description": "Daily model quality metrics from delayed labels",
+        "description": "Daily production model quality metrics",
+    },
+    "quality_by_estimate_level": {
+        "dataset_name": "bi_quality_by_estimate_level",
+        "schema": "gold_ml",
+        "sql": """
+SELECT
+    estimate_level,
+    COUNT(*) AS evaluated_predictions,
+    ROUND(AVG(absolute_error), 2) AS mae,
+    ROUND(SQRT(AVG(squared_error)), 2) AS rmse,
+    ROUND(AVG(prediction_error), 2) AS bias,
+    ROUND(AVG(label_delay_seconds), 1) AS avg_label_delay_seconds
+FROM delta.gold_ml.prediction_actuals
+GROUP BY estimate_level
+""",
+        "description": "Prediction quality split by route estimate fallback level",
+    },
+    "quality_route_hotspots": {
+        "dataset_name": "bi_quality_route_hotspots",
+        "schema": "gold_ml",
+        "sql": """
+SELECT
+    pulocation_id,
+    dolocation_id,
+    COUNT(*) AS evaluated_predictions,
+    ROUND(AVG(absolute_error), 2) AS mae,
+    ROUND(AVG(prediction_error), 2) AS bias
+FROM delta.gold_ml.prediction_actuals
+GROUP BY pulocation_id, dolocation_id
+HAVING COUNT(*) >= 10
+""",
+        "description": "Route-level production error hotspots",
     },
 }
 
@@ -269,25 +314,21 @@ FROM delta.gold_monitoring.model_quality_daily
 def ensure_dataset(db_id: int, key: str) -> int:
     cfg = DATASETS[key]
     name = cfg["dataset_name"]
-
-    # Check existing
-    resp = api("GET", f"/api/v1/dataset/?q=(filters:!((col:table_name,opr:eq,val:'{name}')))")
+    resp = api("GET", f"/api/v1/dataset/?q={filter_q('table_name', name)}")
     if resp.get("count", 0) > 0:
         ds_id = resp["result"][0]["id"]
         print(f"  OK Dataset '{name}' exists (id={ds_id})")
         return ds_id
-
     payload = {
         "database": db_id,
         "table_name": name,
         "sql": cfg["sql"].strip(),
-        "schema": cfg.get("schema", "silver_nyc_taxi"),
-        "description": cfg.get("description", ""),
+        "schema": cfg["schema"],
         "is_managed_externally": False,
     }
     resp = api("POST", "/api/v1/dataset/", payload)
     if "_http_error" in resp:
-        resp2 = api("GET", f"/api/v1/dataset/?q=(filters:!((col:table_name,opr:eq,val:'{name}')))")
+        resp2 = api("GET", f"/api/v1/dataset/?q={filter_q('table_name', name)}")
         if resp2.get("count", 0) > 0:
             return resp2["result"][0]["id"]
         raise RuntimeError(f"Cannot create dataset '{name}': {resp}")
@@ -296,16 +337,19 @@ def ensure_dataset(db_id: int, key: str) -> int:
     return ds_id
 
 
-# Step 3: Charts
 def make_chart(name: str, viz_type: str, ds_id: int, params: dict) -> int:
-    """Create a chart and return its id."""
-    # Check existing
-    resp = api("GET", f"/api/v1/chart/?q=(filters:!((col:slice_name,opr:eq,val:'{name}')))")
+    resp = api("GET", f"/api/v1/chart/?q={filter_q('slice_name', name)}")
     if resp.get("count", 0) > 0:
         cid = resp["result"][0]["id"]
-        print(f"  OK Chart '{name}' exists (id={cid})")
+        api("PUT", f"/api/v1/chart/{cid}", {
+            "slice_name": name,
+            "viz_type": viz_type,
+            "datasource_id": ds_id,
+            "datasource_type": "table",
+            "params": json.dumps(params),
+        })
+        print(f"  OK Chart '{name}' exists (id={cid}); params refreshed")
         return cid
-
     payload = {
         "slice_name": name,
         "viz_type": viz_type,
@@ -316,7 +360,7 @@ def make_chart(name: str, viz_type: str, ds_id: int, params: dict) -> int:
     }
     resp = api("POST", "/api/v1/chart/", payload)
     if "_http_error" in resp:
-        resp2 = api("GET", f"/api/v1/chart/?q=(filters:!((col:slice_name,opr:eq,val:'{name}')))")
+        resp2 = api("GET", f"/api/v1/chart/?q={filter_q('slice_name', name)}")
         if resp2.get("count", 0) > 0:
             return resp2["result"][0]["id"]
         raise RuntimeError(f"Cannot create chart '{name}': {resp}")
@@ -325,412 +369,157 @@ def make_chart(name: str, viz_type: str, ds_id: int, params: dict) -> int:
     return cid
 
 
-def build_charts(ds_ids: dict) -> dict:
-    """Create all charts and return a key-to-id mapping."""
-    charts = {}
-
-    # 1. Big Number - Total Trips
-    charts["total_trips"] = make_chart(
-        "Total Trips",
-        "big_number_total",
-        ds_ids["monthly_summary"],
-        {
-            "metric": {"expressionType": "SIMPLE", "column": {"column_name": "total_trips"}, "aggregate": "SUM", "label": "Total Trips"},
-            "subheader": "All time",
-            "y_axis_format": ",.0f",
-            "header_font_size": 0.4,
-        },
-    )
-
-    # 2. Big Number - Avg Fare
-    charts["avg_fare"] = make_chart(
-        "Avg Fare (USD)",
-        "big_number_total",
-        ds_ids["monthly_summary"],
-        {
-            "metric": {"expressionType": "SIMPLE", "column": {"column_name": "avg_fare"}, "aggregate": "AVG", "label": "Avg Fare"},
-            "subheader": "Average across all months",
-            "y_axis_format": "$,.2f",
-            "header_font_size": 0.4,
-        },
-    )
-
-    # 3. Big Number - Total Revenue
-    charts["total_revenue"] = make_chart(
-        "Total Revenue (USD)",
-        "big_number_total",
-        ds_ids["monthly_summary"],
-        {
-            "metric": {"expressionType": "SIMPLE", "column": {"column_name": "total_revenue"}, "aggregate": "SUM", "label": "Total Revenue"},
-            "subheader": "Sum of all fares",
-            "y_axis_format": "$,.0f",
-            "header_font_size": 0.4,
-        },
-    )
-
-    # 4. Bar Chart - Monthly Trips
-    charts["monthly_trips"] = make_chart(
-        "Monthly Trip Volume",
-        "echarts_timeseries_bar",
-        ds_ids["monthly_summary"],
-        {
-            "x_axis": "year_month",
-            "metrics": [
-                {"expressionType": "SIMPLE", "column": {"column_name": "total_trips"}, "aggregate": "SUM", "label": "Total Trips"}
-            ],
-            "groupby": [],
-            "x_axis_title": "Month",
-            "y_axis_title": "Number of Trips",
-            "color_scheme": "supersetColors",
-            "show_legend": False,
-            "rich_tooltip": True,
-            "y_axis_format": ",.0f",
-        },
-    )
-
-    # 5. Line Chart - Monthly Avg Fare trend
-    charts["fare_trend"] = make_chart(
-        "Monthly Avg Fare Trend",
-        "echarts_timeseries_line",
-        ds_ids["monthly_summary"],
-        {
-            "x_axis": "year_month",
-            "metrics": [
-                {"expressionType": "SIMPLE", "column": {"column_name": "avg_fare"}, "aggregate": "AVG", "label": "Avg Fare ($)"}
-            ],
-            "groupby": [],
-            "x_axis_title": "Month",
-            "y_axis_title": "Avg Fare (USD)",
-            "color_scheme": "supersetColors",
-            "show_legend": False,
-            "rich_tooltip": True,
-            "y_axis_format": "$,.2f",
-            "smooth": True,
-        },
-    )
-
-    # 6. Bar Chart - Trips by Hour
-    charts["hourly_trips"] = make_chart(
-        "Trips by Hour of Day",
-        "echarts_bar",
-        ds_ids["hourly_dist"],
-        {
-            "x": "pickup_hour",
-            "metrics": [
-                {"expressionType": "SIMPLE", "column": {"column_name": "trip_count"}, "aggregate": "SUM", "label": "Trips"}
-            ],
-            "groupby": [],
-            "x_axis_title": "Hour (0-23)",
-            "y_axis_title": "Number of Trips",
-            "color_scheme": "bnbColors",
-            "show_legend": False,
-            "rich_tooltip": True,
-            "y_axis_format": ",.0f",
-        },
-    )
-
-    # 7. Bar Chart - Trips by Day of Week
-    charts["dow_trips"] = make_chart(
-        "Trips by Day of Week",
-        "echarts_bar",
-        ds_ids["dow_dist"],
-        {
-            "x": "day_name",
-            "metrics": [
-                {"expressionType": "SIMPLE", "column": {"column_name": "trip_count"}, "aggregate": "SUM", "label": "Trips"}
-            ],
-            "groupby": [],
-            "x_axis_title": "Day",
-            "y_axis_title": "Number of Trips",
-            "color_scheme": "bnbColors",
-            "show_legend": False,
-            "rich_tooltip": True,
-            "y_axis_format": ",.0f",
-        },
-    )
-
-    # 8. Pie Chart - Fare Distribution
-    charts["fare_pie"] = make_chart(
-        "Fare Distribution",
-        "pie",
-        ds_ids["fare_buckets"],
-        {
-            "groupby": ["fare_bucket"],
-            "metric": {"expressionType": "SIMPLE", "column": {"column_name": "trip_count"}, "aggregate": "SUM", "label": "Trips"},
-            "color_scheme": "supersetColors",
-            "show_legend": True,
-            "show_labels": True,
-            "label_type": "key_percent",
-            "donut": True,
-            "innerRadius": 40,
-            "outerRadius": 70,
-        },
-    )
-
-    # 9. Bar Chart - Location Clusters
-    charts["location_clusters"] = make_chart(
-        "Avg Fare by Location Cluster",
-        "echarts_bar",
-        ds_ids["location_clusters"],
-        {
-            "x": "location_cluster",
-            "metrics": [
-                {"expressionType": "SIMPLE", "column": {"column_name": "avg_fare"}, "aggregate": "AVG", "label": "Avg Fare ($)"},
-                {"expressionType": "SIMPLE", "column": {"column_name": "trip_count"}, "aggregate": "SUM", "label": "Trips"},
-            ],
-            "groupby": [],
-            "x_axis_title": "Location Cluster",
-            "y_axis_title": "Value",
-            "color_scheme": "supersetColors",
-            "show_legend": True,
-            "rich_tooltip": True,
-            "y_axis_format": ",.2f",
-        },
-    )
-
-    # 10. Bar Chart - Weekend vs Weekday
-    charts["weekend_weekday"] = make_chart(
-        "Weekend vs Weekday",
-        "echarts_bar",
-        ds_ids["weekend_vs_weekday"],
-        {
-            "x": "day_type",
-            "metrics": [
-                {"expressionType": "SIMPLE", "column": {"column_name": "avg_fare"}, "aggregate": "AVG", "label": "Avg Fare ($)"},
-                {"expressionType": "SIMPLE", "column": {"column_name": "avg_speed_mph"}, "aggregate": "AVG", "label": "Avg Speed (mph)"},
-            ],
-            "groupby": [],
-            "x_axis_title": "Day Type",
-            "y_axis_title": "Value",
-            "color_scheme": "bnbColors",
-            "show_legend": True,
-            "rich_tooltip": True,
-        },
-    )
-
-    # 11. Pie Chart - Lifecycle status
-    charts["status_snapshot"] = make_chart(
-        "Trip Lifecycle Status",
-        "pie",
-        ds_ids["status_snapshot"],
-        {
-            "groupby": ["status"],
-            "metric": {"expressionType": "SIMPLE", "column": {"column_name": "trip_count"}, "aggregate": "SUM", "label": "Trips"},
-            "color_scheme": "supersetColors",
-            "show_legend": True,
-            "show_labels": True,
-            "label_type": "key_percent",
-            "donut": True,
-        },
-    )
-
-    # 12. Line Chart - Daily model MAE
-    charts["model_mae"] = make_chart(
-        "Model MAE by Day",
-        "echarts_timeseries_line",
-        ds_ids["model_quality_daily"],
-        {
-            "x_axis": "metric_date",
-            "metrics": [
-                {"expressionType": "SIMPLE", "column": {"column_name": "mae"}, "aggregate": "AVG", "label": "MAE"}
-            ],
-            "groupby": [],
-            "x_axis_title": "Date",
-            "y_axis_title": "MAE",
-            "color_scheme": "supersetColors",
-            "show_legend": False,
-            "rich_tooltip": True,
-        },
-    )
-
-    return charts
+def simple_metric(column: str, aggregate: str, label: str) -> dict:
+    return {"expressionType": "SIMPLE", "column": {"column_name": column}, "aggregate": aggregate, "label": label}
 
 
-# Step 4: Dashboard
-def build_dashboard_layout(chart_ids: dict) -> dict:
-    """Create the Superset dashboard layout tree."""
-    cids = chart_ids  # shorthand
-
-    # Each CHART component needs a unique id.
-    def chart_component(uid: str, chart_id: int, w: int = 6, h: int = 8) -> dict:
-        return {
-            "id": uid,
-            "type": "CHART",
-            "meta": {
-                "chartId": chart_id,
-                "width": w,
-                "height": h,
-                "sliceName": "",
-            },
-            "children": [],
-            "parents": [],
-        }
-
-    def row_component(uid: str, children: list) -> dict:
-        return {
-            "id": uid,
-            "type": "ROW",
-            "meta": {"background": "BACKGROUND_TRANSPARENT"},
-            "children": children,
-            "parents": ["ROOT_ID", "GRID_ID"],
-        }
-
-    layout = {
-        "ROOT_ID": {
-            "id": "ROOT_ID",
-            "type": "ROOT",
-            "children": ["GRID_ID"],
-            "parents": [],
-        },
-        "GRID_ID": {
-            "id": "GRID_ID",
-            "type": "GRID",
-            "children": ["ROW-kpi", "ROW-monthly", "ROW-time", "ROW-dist", "ROW-cluster", "ROW-ops-ml"],
-            "parents": ["ROOT_ID"],
-        },
-        # Row 1: KPI big numbers (3 cards)
-        "ROW-kpi": row_component("ROW-kpi", ["CHART-total-trips", "CHART-avg-fare", "CHART-revenue"]),
-        "CHART-total-trips": chart_component("CHART-total-trips", cids["total_trips"],  w=4, h=5),
-        "CHART-avg-fare":    chart_component("CHART-avg-fare",    cids["avg_fare"],     w=4, h=5),
-        "CHART-revenue":     chart_component("CHART-revenue",     cids["total_revenue"],w=4, h=5),
-        # Row 2: Monthly trends
-        "ROW-monthly": row_component("ROW-monthly", ["CHART-monthly-trips", "CHART-fare-trend"]),
-        "CHART-monthly-trips": chart_component("CHART-monthly-trips", cids["monthly_trips"], w=6, h=9),
-        "CHART-fare-trend":    chart_component("CHART-fare-trend",    cids["fare_trend"],    w=6, h=9),
-        # Row 3: Time distribution
-        "ROW-time": row_component("ROW-time", ["CHART-hourly", "CHART-dow"]),
-        "CHART-hourly": chart_component("CHART-hourly", cids["hourly_trips"], w=6, h=9),
-        "CHART-dow":    chart_component("CHART-dow",    cids["dow_trips"],    w=6, h=9),
-        # Row 4: Fare distribution + Weekend
-        "ROW-dist": row_component("ROW-dist", ["CHART-fare-pie", "CHART-weekend"]),
-        "CHART-fare-pie": chart_component("CHART-fare-pie", cids["fare_pie"],        w=6, h=9),
-        "CHART-weekend":  chart_component("CHART-weekend",  cids["weekend_weekday"], w=6, h=9),
-        # Row 5: Location clusters
-        "ROW-cluster": row_component("ROW-cluster", ["CHART-location"]),
-        "CHART-location": chart_component("CHART-location", cids["location_clusters"], w=12, h=9),
-        # Row 6: Lifecycle status + model quality
-        "ROW-ops-ml": row_component("ROW-ops-ml", ["CHART-status", "CHART-model-mae"]),
-        "CHART-status": chart_component("CHART-status", cids["status_snapshot"], w=6, h=9),
-        "CHART-model-mae": chart_component("CHART-model-mae", cids["model_mae"], w=6, h=9),
-        # Header
-        "HEADER_ID": {
-            "id": "HEADER_ID",
-            "type": "HEADER",
-            "meta": {"text": "NYC Taxi Operations Analytics"},
-        },
+def build_business_charts(ds: dict) -> dict:
+    return {
+        "completed_trips": make_chart("Business - Completed Trips", "big_number_total", ds["business_monthly"], {"metric": simple_metric("completed_trips", "SUM", "Completed Trips"), "subheader": "All time", "y_axis_format": ",.0f"}),
+        "revenue": make_chart("Business - Total Revenue", "big_number_total", ds["business_monthly"], {"metric": simple_metric("total_revenue", "SUM", "Revenue"), "subheader": "All time", "y_axis_format": "$,.0f"}),
+        "avg_fare": make_chart("Business - Avg Fare", "big_number_total", ds["business_monthly"], {"metric": simple_metric("avg_fare", "AVG", "Avg Fare"), "subheader": "Across months", "y_axis_format": "$,.2f"}),
+        "monthly_trips": make_chart("Business - Monthly Trips", "echarts_timeseries_bar", ds["business_monthly"], {"x_axis": "year_month", "metrics": [simple_metric("completed_trips", "SUM", "Trips")], "groupby": [], "y_axis_format": ",.0f"}),
+        "monthly_revenue": make_chart("Business - Monthly Revenue", "echarts_timeseries_line", ds["business_monthly"], {"x_axis": "year_month", "metrics": [simple_metric("total_revenue", "SUM", "Revenue")], "groupby": [], "y_axis_format": "$,.0f"}),
+        "hourly_demand": make_chart("Business - Hourly Demand", "echarts_timeseries_bar", ds["business_hourly"], {"x_axis": "pickup_hour", "metrics": [simple_metric("completed_trips", "SUM", "Trips")], "groupby": [], "y_axis_format": ",.0f"}),
+        "top_routes": make_chart("Business - Top Routes", "table", ds["business_routes"], {"all_columns": ["pulocation_id", "dolocation_id", "completed_trips", "total_revenue", "avg_fare"], "order_by_cols": [["completed_trips", False]], "row_limit": 10}),
+        "payments": make_chart("Business - Payment Mix", "pie", ds["business_payments"], {"groupby": ["payment_type_desc"], "metric": simple_metric("completed_trips", "SUM", "Trips"), "donut": True, "show_labels": True}),
+        "status": make_chart("Business - Lifecycle Status", "pie", ds["business_status"], {"groupby": ["status"], "metric": simple_metric("trip_count", "SUM", "Trips"), "donut": True, "show_labels": True}),
     }
+
+
+def build_prediction_charts(ds: dict) -> dict:
+    return {
+        "prediction_count": make_chart("Prediction Ops - Total Predictions", "big_number_total", ds["prediction_daily"], {"metric": simple_metric("prediction_count", "SUM", "Predictions"), "subheader": "All time", "y_axis_format": ",.0f"}),
+        "avg_predicted_fare": make_chart("Prediction Ops - Avg Predicted Fare", "big_number_total", ds["prediction_daily"], {"metric": simple_metric("avg_predicted_fare", "AVG", "Avg Predicted Fare"), "subheader": "Across days", "y_axis_format": "$,.2f"}),
+        "daily_predictions": make_chart("Prediction Ops - Daily Volume", "echarts_timeseries_bar", ds["prediction_daily"], {"x_axis": "prediction_date", "metrics": [simple_metric("prediction_count", "SUM", "Predictions")], "groupby": [], "y_axis_format": ",.0f"}),
+        "hourly_predictions": make_chart("Prediction Ops - Predictions by Hour", "echarts_timeseries_bar", ds["prediction_hourly"], {"x_axis": "pickup_hour", "metrics": [simple_metric("prediction_count", "SUM", "Predictions")], "groupby": [], "y_axis_format": ",.0f"}),
+        "estimate_mix": make_chart("Prediction Ops - Estimate Level Mix", "pie", ds["prediction_daily"], {"groupby": ["estimate_level"], "metric": simple_metric("prediction_count", "SUM", "Predictions"), "donut": True, "show_labels": True}),
+        "model_versions": make_chart("Prediction Ops - Volume by Model Version", "echarts_timeseries_bar", ds["prediction_daily"], {"x_axis": "model_version", "metrics": [simple_metric("prediction_count", "SUM", "Predictions")], "groupby": [], "y_axis_format": ",.0f"}),
+        "route_coverage": make_chart("Prediction Ops - Route Coverage", "table", ds["route_coverage"], {"all_columns": ["estimate_level", "lookup_rows", "avg_sample_count", "avg_estimated_distance", "avg_estimated_duration_min"], "row_limit": 10}),
+    }
+
+
+def build_quality_charts(ds: dict) -> dict:
+    return {
+        "mae": make_chart("Quality - MAE", "big_number_total", ds["quality_daily"], {"metric": simple_metric("mae", "AVG", "MAE"), "subheader": "Daily average", "y_axis_format": "$,.2f"}),
+        "bias": make_chart("Quality - Bias", "big_number_total", ds["quality_daily"], {"metric": simple_metric("bias", "AVG", "Bias"), "subheader": "Predicted - actual", "y_axis_format": "$,.2f"}),
+        "label_delay": make_chart("Quality - Avg Label Delay", "big_number_total", ds["quality_daily"], {"metric": simple_metric("avg_label_delay_seconds", "AVG", "Seconds"), "subheader": "Delayed labels", "y_axis_format": ",.0f"}),
+        "mae_trend": make_chart("Quality - MAE Trend", "echarts_timeseries_line", ds["quality_daily"], {"x_axis": "metric_date", "metrics": [simple_metric("mae", "AVG", "MAE"), simple_metric("rmse", "AVG", "RMSE")], "groupby": [], "y_axis_format": "$,.2f"}),
+        "pred_vs_actual": make_chart("Quality - Predicted vs Actual Fare", "echarts_timeseries_line", ds["quality_daily"], {"x_axis": "metric_date", "metrics": [simple_metric("avg_predicted_fare", "AVG", "Predicted"), simple_metric("avg_actual_fare", "AVG", "Actual")], "groupby": [], "y_axis_format": "$,.2f"}),
+        "quality_by_level": make_chart("Quality - Error by Estimate Level", "echarts_timeseries_bar", ds["quality_by_estimate_level"], {"x_axis": "estimate_level", "metrics": [simple_metric("mae", "AVG", "MAE"), simple_metric("rmse", "AVG", "RMSE")], "groupby": []}),
+        "route_hotspots": make_chart("Quality - Route Error Hotspots", "table", ds["quality_route_hotspots"], {"all_columns": ["pulocation_id", "dolocation_id", "evaluated_predictions", "mae", "bias"], "order_by_cols": [["mae", False]], "row_limit": 10}),
+    }
+
+
+def chart_component(uid: str, chart_id: int, row_id: str, w: int = 6, h: int = 24) -> dict:
+    return {
+        "id": uid,
+        "type": "CHART",
+        "meta": {"chartId": chart_id, "width": w, "height": h, "sliceName": ""},
+        "children": [],
+        "parents": ["ROOT_ID", "GRID_ID", row_id],
+    }
+
+
+def row_component(uid: str, children: list) -> dict:
+    return {"id": uid, "type": "ROW", "meta": {"background": "BACKGROUND_TRANSPARENT"}, "children": children, "parents": ["ROOT_ID", "GRID_ID"]}
+
+
+def make_layout(rows: list[list[tuple[str, int, int, int]]]) -> dict:
+    layout = {
+        "ROOT_ID": {"id": "ROOT_ID", "type": "ROOT", "children": ["GRID_ID"], "parents": []},
+        "GRID_ID": {"id": "GRID_ID", "type": "GRID", "children": [], "parents": ["ROOT_ID"]},
+    }
+    for idx, row in enumerate(rows, 1):
+        row_id = f"ROW-{idx}"
+        child_ids = []
+        for slug, chart_id, width, height in row:
+            cid = f"CHART-{slug}"
+            child_ids.append(cid)
+            layout[cid] = chart_component(cid, chart_id, row_id, width, height)
+        layout[row_id] = row_component(row_id, child_ids)
+        layout["GRID_ID"]["children"].append(row_id)
     return layout
 
 
-def ensure_dashboard(chart_ids: dict) -> int:
-    title = "NYC Taxi Operations Analytics"
-
-    # Check existing
-    resp = api("GET", f"/api/v1/dashboard/?q=(filters:!((col:dashboard_title,opr:eq,val:'{title}')))")
-    if resp.get("count", 0) > 0:
-        did = resp["result"][0]["id"]
-        print(f"  OK Dashboard '{title}' exists (id={did}); updating charts...")
-        # Update layout with the latest chart ids.
-        layout = build_dashboard_layout(chart_ids)
-        api("PUT", f"/api/v1/dashboard/{did}", {
-            "position_json": json.dumps(layout),
-            "published": True,
-        })
-        return did
-
-    layout = build_dashboard_layout(chart_ids)
+def ensure_dashboard(title: str, slug: str, chart_ids: dict, rows: list[list[tuple[str, int, int, int]]]) -> int:
+    resp = api("GET", f"/api/v1/dashboard/?q={filter_q('dashboard_title', title)}")
+    layout = make_layout(rows)
+    metadata = json.dumps({"positions": layout})
     payload = {
         "dashboard_title": title,
-        "slug": "nyc-taxi-operations",
+        "slug": slug,
         "published": True,
         "position_json": json.dumps(layout),
-        "metadata": json.dumps({
-            "color_scheme": "supersetColors",
-            "refresh_frequency": 0,
-            "expanded_slices": {},
-            "default_filters": "{}",
-        }),
+        "json_metadata": metadata,
     }
-    resp = api("POST", "/api/v1/dashboard/", payload)
-    if "_http_error" in resp:
-        resp2 = api("GET", f"/api/v1/dashboard/?q=(filters:!((col:dashboard_title,opr:eq,val:'{title}')))")
-        if resp2.get("count", 0) > 0:
-            return resp2["result"][0]["id"]
-        raise RuntimeError(f"Cannot create dashboard: {resp}")
-    did = resp["id"]
-    print(f"  OK Dashboard '{title}' created (id={did})")
+    if resp.get("count", 0) > 0:
+        did = resp["result"][0]["id"]
+        api("PUT", f"/api/v1/dashboard/{did}", {
+            "position_json": payload["position_json"],
+            "json_metadata": metadata,
+            "published": True,
+        })
+        print(f"  OK Dashboard '{title}' exists (id={did}); layout updated")
+    else:
+        created = api("POST", "/api/v1/dashboard/", payload)
+        if "_http_error" in created:
+            resp2 = api("GET", f"/api/v1/dashboard/?q={filter_q('dashboard_title', title)}")
+            if resp2.get("count", 0) == 0:
+                raise RuntimeError(f"Cannot create dashboard '{title}': {created}")
+            did = resp2["result"][0]["id"]
+        else:
+            did = created["id"]
+        print(f"  OK Dashboard '{title}' ready (id={did})")
     return did
 
 
-def add_charts_to_dashboard(dashboard_id: int, chart_ids: dict):
-    """Attach all charts to the dashboard."""
-    ids = list(chart_ids.values())
-    resp = api("PUT", f"/api/v1/dashboard/{dashboard_id}", {
-        "charts": ids,
-    })
-    if "_http_error" not in resp:
-        print(f"  OK {len(ids)} charts linked to dashboard")
-
-
-# Main
 def main():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  NYC Taxi - Superset Dashboard Creator")
-    print("="*60)
-
-    # 1. Wait for services
+    print("=" * 60)
     print("\n[0] Checking services...")
     if not wait_http(f"{SUPERSET_URL}/health", "Superset"):
         print("\n  ERROR Superset not reachable.")
-        print("    Start with: docker compose -f docker-compose.dev.yml up -d superset")
         sys.exit(1)
-
-    trino_up = wait_http(f"{TRINO_URL}/v1/info", "Trino", retries=10, delay=3)
-    if not trino_up:
-        print("  WARN Trino not running; database connection will be created but queries may fail")
-        print("     Start with: docker compose -f docker-compose.dev.yml up -d trino")
-
-    # 2. Login
+    if not wait_http(f"{TRINO_URL}/v1/info", "Trino", retries=10, delay=3):
+        print("  WARN Trino not running; metadata will be created but queries may fail")
     print("\n[1] Logging in to Superset...")
     global _token
-    for attempt in range(5):
-        try:
-            _token = login()
-            print(f"  OK Authenticated as '{ADMIN_USER}'")
-            break
-        except Exception as e:
-            if attempt == 4:
-                print(f"  ERROR Login failed: {e}")
-                sys.exit(1)
-            print(f"  Retry {attempt+1}/5...")
-            time.sleep(5)
-
-    # 3. Database
+    _token = login()
+    print(f"  OK Authenticated as '{ADMIN_USER}'")
     print("\n[2] Setting up Trino database connection...")
     db_id = ensure_database()
-
-    # 4. Datasets
     print("\n[3] Creating datasets...")
-    ds_ids = {}
-    for key in DATASETS:
-        ds_ids[key] = ensure_dataset(db_id, key)
-
-    # 5. Charts
+    ds_ids = {key: ensure_dataset(db_id, key) for key in DATASETS}
     print("\n[4] Creating charts...")
-    chart_ids = build_charts(ds_ids)
-
-    # 6. Dashboard
-    print("\n[5] Building dashboard...")
-    dashboard_id = ensure_dashboard(chart_ids)
-    add_charts_to_dashboard(dashboard_id, chart_ids)
-
-    # Done
-    print("\n" + "="*60)
-    print("  Dashboard ready!")
-    print("="*60)
-    print(f"\n  URL: {SUPERSET_URL}/superset/dashboard/nyc-taxi-operations/")
-    print(f"  Or:  {SUPERSET_URL}/dashboard/list  -> 'NYC Taxi Operations Analytics'")
-    print(f"\n  Login: {SUPERSET_URL}  (admin / admin)")
+    business = build_business_charts(ds_ids)
+    prediction = build_prediction_charts(ds_ids)
+    quality = build_quality_charts(ds_ids)
+    print("\n[5] Building dashboards...")
+    ensure_dashboard("NYC Taxi - Business Overview", "nyc-taxi-business-overview", business, [
+        [("completed-trips", business["completed_trips"], 4, 14), ("revenue", business["revenue"], 4, 14), ("avg-fare", business["avg_fare"], 4, 14)],
+        [("monthly-trips", business["monthly_trips"], 6, 28), ("monthly-revenue", business["monthly_revenue"], 6, 28)],
+        [("hourly-demand", business["hourly_demand"], 6, 28), ("payments", business["payments"], 6, 28)],
+        [("top-routes", business["top_routes"], 8, 30), ("status", business["status"], 4, 30)],
+    ])
+    ensure_dashboard("NYC Taxi - Realtime Prediction Ops", "nyc-taxi-realtime-prediction-ops", prediction, [
+        [("prediction-count", prediction["prediction_count"], 6, 14), ("avg-predicted-fare", prediction["avg_predicted_fare"], 6, 14)],
+        [("daily-predictions", prediction["daily_predictions"], 6, 28), ("hourly-predictions", prediction["hourly_predictions"], 6, 28)],
+        [("estimate-mix", prediction["estimate_mix"], 6, 28), ("model-versions", prediction["model_versions"], 6, 28)],
+        [("route-coverage", prediction["route_coverage"], 12, 30)],
+    ])
+    ensure_dashboard("NYC Taxi - Model Quality", "nyc-taxi-model-quality", quality, [
+        [("mae", quality["mae"], 4, 14), ("bias", quality["bias"], 4, 14), ("label-delay", quality["label_delay"], 4, 14)],
+        [("mae-trend", quality["mae_trend"], 6, 28), ("pred-vs-actual", quality["pred_vs_actual"], 6, 28)],
+        [("quality-by-level", quality["quality_by_level"], 6, 28), ("route-hotspots", quality["route_hotspots"], 6, 30)],
+    ])
+    print("\n" + "=" * 60)
+    print("  Dashboards ready!")
+    print("=" * 60)
+    print(f"\n  {SUPERSET_URL}/superset/dashboard/nyc-taxi-business-overview/")
+    print(f"  {SUPERSET_URL}/superset/dashboard/nyc-taxi-realtime-prediction-ops/")
+    print(f"  {SUPERSET_URL}/superset/dashboard/nyc-taxi-model-quality/")
     print()
 
 
