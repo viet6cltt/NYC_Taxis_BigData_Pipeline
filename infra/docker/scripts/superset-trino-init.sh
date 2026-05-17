@@ -2,6 +2,15 @@
 set -e
 
 BASE=http://superset:8088
+TRINO_BASE=http://trino:8080
+
+echo 'Waiting for Trino SQL endpoint...'
+until curl -sf -X POST "$TRINO_BASE/v1/statement" \
+  -H 'X-Trino-User: superset-init' \
+  -d 'SELECT 1' >/dev/null; do
+  echo '  Trino HTTP is up but SQL is not ready yet; retrying in 3s...'
+  sleep 3
+done
 
 echo 'Logging in to Superset...'
 LOGIN_RESP=$(curl -s -X POST "$BASE/api/v1/security/login" \
