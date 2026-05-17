@@ -20,7 +20,7 @@ spec:
         role: storage 
       containers:
         - name: fastapi
-          image: 100.76.120.58:5000/nyc-taxi-fastapi:v1.0
+          image: 10.148.0.2:5000/nyc-taxi-fastapi:v1.0
           imagePullPolicy: Always
           ports:
             - containerPort: 8000

@@ -26,7 +26,7 @@ spec:
               done
       containers:
         - name: producer
-          image: 100.76.120.58:5000/nyc-taxi-replay:v1.0
+          image: 10.148.0.2:5000/nyc-taxi-replay:v1.0
           imagePullPolicy: Always
           env:
             - name: KAFKA_STARTED_TOPIC
