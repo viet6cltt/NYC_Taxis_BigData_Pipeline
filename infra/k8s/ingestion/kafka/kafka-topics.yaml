@@ -6,8 +6,8 @@ metadata:
   labels:
     strimzi.io/cluster: my-kafka-cluster
 spec:
-  partitions: 3
-  replicas: 1
+  partitions: 6
+  replicas: 2
   config:
     retention.ms: 604800000 # 7 days
     segment.bytes: 1073741824 # 1 GB
@@ -20,8 +20,8 @@ metadata:
   labels:
     strimzi.io/cluster: my-kafka-cluster
 spec:
-  partitions: 3
-  replicas: 1
+  partitions: 6
+  replicas: 2
   config:
     retention.ms: 604800000 # 7 days
     segment.bytes: 1073741824 # 1 GB

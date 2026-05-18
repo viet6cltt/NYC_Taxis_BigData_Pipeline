@@ -31,14 +31,17 @@ chmod 600 "$K8S_SUBMISSION_TOKEN_FILE"
 
 # Kafka / Bronze
 TARGET_EVENT_KIND="${1:-all}"
-KAFKA_STARTED_TOPIC="nyc-taxi-trip-started"
-KAFKA_COMPLETED_TOPIC="nyc-taxi-trip-completed"
+KAFKA_STARTED_TOPIC="${KAFKA_STARTED_TOPIC:-nyc-taxi-trip-started}"
+KAFKA_COMPLETED_TOPIC="${KAFKA_COMPLETED_TOPIC:-nyc-taxi-trip-completed}"
 KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-my-kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local:9092}"
-STARTED_OUTPUT_PATH="s3a://lakehouse/bronze/nyc-taxi/trip_started"
-COMPLETED_OUTPUT_PATH="s3a://lakehouse/bronze/nyc-taxi/trip_completed"
-STARTED_CHECKPOINT_LOCATION="s3a://lakehouse/_checkpoints/bronze/trip_started/kafka_to_bronze"
-COMPLETED_CHECKPOINT_LOCATION="s3a://lakehouse/_checkpoints/bronze/trip_completed/kafka_to_bronze"
-TRIGGER_INTERVAL="30 seconds"
+STARTED_OUTPUT_PATH="${STARTED_OUTPUT_PATH:-s3a://lakehouse/bronze/nyc-taxi/trip_started}"
+COMPLETED_OUTPUT_PATH="${COMPLETED_OUTPUT_PATH:-s3a://lakehouse/bronze/nyc-taxi/trip_completed}"
+STARTED_CHECKPOINT_LOCATION="${STARTED_CHECKPOINT_LOCATION:-s3a://lakehouse/_checkpoints/bronze/trip_started/kafka_to_bronze}"
+COMPLETED_CHECKPOINT_LOCATION="${COMPLETED_CHECKPOINT_LOCATION:-s3a://lakehouse/_checkpoints/bronze/trip_completed/kafka_to_bronze}"
+TRIGGER_INTERVAL="${TRIGGER_INTERVAL:-30 seconds}"
+MAX_OFFSETS_PER_TRIGGER="${MAX_OFFSETS_PER_TRIGGER:-}"
+KAFKA_GROUP_ID_PREFIX="${KAFKA_GROUP_ID_PREFIX:-nyc-taxi-benchmark}"
+BENCHMARK_METRICS_ENABLED="${BENCHMARK_METRICS_ENABLED:-true}"
 
 # Image
 REGISTRY="${REGISTRY:-localhost:5000}"
@@ -90,6 +93,9 @@ submit_streaming_job() {
     --conf spark.kubernetes.driverEnv.CHECKPOINT_LOCATION="$checkpoint_location" \
     --conf spark.kubernetes.driverEnv.AVRO_SCHEMA_PATH="schemas/taxi_trip_event.avsc" \
     --conf spark.kubernetes.driverEnv.TRIGGER_INTERVAL="$TRIGGER_INTERVAL" \
+    --conf spark.kubernetes.driverEnv.MAX_OFFSETS_PER_TRIGGER="$MAX_OFFSETS_PER_TRIGGER" \
+    --conf spark.kubernetes.driverEnv.KAFKA_GROUP_ID="${KAFKA_GROUP_ID_PREFIX}-${event_kind}" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_METRICS_ENABLED="$BENCHMARK_METRICS_ENABLED" \
     \
     \
     --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.mount.path=/data \

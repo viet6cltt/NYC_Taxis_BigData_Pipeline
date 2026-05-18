@@ -143,6 +143,8 @@ spec:
         app: superset
         component: bi-dashboard
     spec:
+      securityContext:
+        runAsUser: 0
       initContainers:
         # Bước 1: Chờ PostgreSQL sẵn sàng
         - name: wait-for-postgres
@@ -160,7 +162,7 @@ spec:
 
         # Bước 2: Chạy db upgrade + tạo admin user
         - name: superset-init
-          image: apache/superset:4.1.1
+          image: apache/superset:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: SUPERSET_CONFIG_PATH
@@ -175,7 +177,8 @@ spec:
             - |
               set -e
               echo "[init] Installing Python database drivers..."
-              pip install --quiet psycopg2-binary
+              /app/.venv/bin/python -m ensurepip --upgrade
+              /app/.venv/bin/python -m pip install --quiet psycopg2-binary
 
               echo "[init] Running database migrations..."
               superset db upgrade
@@ -221,7 +224,8 @@ spec:
             - -c
             - |
               # Cài thêm database drivers nếu chưa có
-              pip install --quiet psycopg2-binary trino sqlalchemy-trino
+              /app/.venv/bin/python -m ensurepip --upgrade
+              /app/.venv/bin/python -m pip install --quiet psycopg2-binary trino sqlalchemy-trino
               # Khởi động Superset
               superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger
           volumeMounts:
@@ -306,6 +310,8 @@ spec:
       labels:
         app: superset-add-trino-db
     spec:
+      securityContext:
+        runAsUser: 0
       restartPolicy: OnFailure
       initContainers:
         - name: wait-for-superset
@@ -324,7 +330,7 @@ spec:
               echo "Superset is ready!"
       containers:
         - name: add-trino-connection
-          image: apache/superset:4.1.1
+          image: apache/superset:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: SUPERSET_CONFIG_PATH
@@ -340,7 +346,8 @@ spec:
               set -e
 
               # Cài database drivers
-              pip install --quiet psycopg2-binary trino sqlalchemy-trino
+              /app/.venv/bin/python -m ensurepip --upgrade
+              /app/.venv/bin/python -m pip install --quiet psycopg2-binary trino sqlalchemy-trino
 
               python3 << 'PYEOF'
               import os

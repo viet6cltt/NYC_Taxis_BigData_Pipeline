@@ -86,8 +86,6 @@ spec:
         app: trino
         component: query-engine
     spec:
-      nodeSelector:
-         workload: spark
       containers:
         - name: trino
           image: trinodb/trino:480

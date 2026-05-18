@@ -44,6 +44,14 @@ SPARK_DRIVER_MEMORY = os.getenv("NYC_TAXI_LIFECYCLE_DRIVER_MEMORY", "1g")
 SPARK_EXECUTOR_MEMORY = os.getenv("NYC_TAXI_LIFECYCLE_EXECUTOR_MEMORY", "2g")
 SPARK_EXECUTOR_INSTANCES = os.getenv("NYC_TAXI_LIFECYCLE_EXECUTOR_INSTANCES", "1")
 SPARK_SHUFFLE_PARTITIONS = os.getenv("NYC_TAXI_LIFECYCLE_SHUFFLE_PARTITIONS", "4")
+SPARK_DRIVER_DELETE_ON_TERMINATION = os.getenv(
+    "NYC_TAXI_SPARK_DRIVER_DELETE_ON_TERMINATION",
+    "true",
+)
+SPARK_EXECUTOR_DELETE_ON_TERMINATION = os.getenv(
+    "NYC_TAXI_SPARK_EXECUTOR_DELETE_ON_TERMINATION",
+    "true",
+)
 
 DEFAULT_ARGS = {
     "owner": "nyc-taxi",
@@ -65,6 +73,8 @@ set -euo pipefail
   --conf spark.kubernetes.container.image.pullPolicy={SPARK_IMAGE_PULL_POLICY} \\
   --conf spark.kubernetes.authenticate.driver.serviceAccountName={SERVICE_ACCOUNT} \\
   --conf spark.kubernetes.submission.waitAppCompletion=true \\
+  --conf spark.kubernetes.driver.deleteOnTermination={SPARK_DRIVER_DELETE_ON_TERMINATION} \\
+  --conf spark.kubernetes.executor.deleteOnTermination={SPARK_EXECUTOR_DELETE_ON_TERMINATION} \\
   --conf spark.executor.instances={SPARK_EXECUTOR_INSTANCES} \\
   --conf spark.executor.memory={SPARK_EXECUTOR_MEMORY} \\
   --conf spark.driver.memory={SPARK_DRIVER_MEMORY} \\

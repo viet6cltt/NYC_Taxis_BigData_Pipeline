@@ -1,103 +1,70 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
-echo "=== K3s Agent Auto Join ==="
+echo "=== K3s Agent Join for VM ==="
 
-# =========================
-# HARD-CODED CONFIG
-# =========================
+if [ ! -f ./.env ]; then
+  echo "Missing .env file"
+  exit 1
+fi
 
-K3S_MASTER_IP="100.76.120.58"
+set -a
+# shellcheck disable=SC1091
+. ./.env
+set +a
 
-K8S_MASTER="https://${K3S_MASTER_IP}:6443"
+K3S_MASTER_IP="${K3S_MASTER_IP:-}"
+TOKEN="${TOKEN:-}"
+REGISTRY="${REGISTRY:-}"
 
-MINIO_ENDPOINT="http://minio-api.minio.svc.cluster.local:9000"
+if [ -z "$K3S_MASTER_IP" ]; then
+  echo "Missing K3S_MASTER_IP in .env"
+  exit 1
+fi
 
-REGISTRY="100.76.120.58:5000"
-
-TOKEN="K10c3e48380ca4f99c6eb5dee3245142561a4c6cae137db501574b6b6eb3eaea302::server:08bf29a87a9d71ef872b0e4010ac6ae8"
-
-# =========================
-# CHECK TAILSCALE
-# =========================
-
-echo "=== Checking Tailscale ==="
+if [ -z "$TOKEN" ]; then
+  echo "Missing TOKEN in .env"
+  exit 1
+fi
 
 if ! command -v tailscale >/dev/null 2>&1; then
-  echo "tailscale is not installed"
-  echo
-  echo "Install with:"
-  echo "curl -fsSL https://tailscale.com/install.sh | sh"
+  echo "tailscale is not installed. Install and login to Tailscale first."
   exit 1
 fi
 
-# =========================
-# GET TAILSCALE IP
-# =========================
-
-echo "=== Detecting Tailscale IP ==="
-
-TAILSCALE_IP="$(tailscale ip -4 || true)"
+TAILSCALE_IP="$(tailscale ip -4 2>/dev/null || true)"
 
 if [ -z "$TAILSCALE_IP" ]; then
-  echo "Cannot detect Tailscale IPv4"
-  echo
-  echo "Run:"
-  echo "sudo tailscale up"
+  echo "Cannot detect Tailscale IPv4. Run: sudo tailscale up"
   exit 1
 fi
 
-echo "Detected node IP: $TAILSCALE_IP"
-
-# =========================
-# CREATE K3S CONFIG DIR
-# =========================
-
-echo "=== Preparing K3s config ==="
+echo "Master API: https://${K3S_MASTER_IP}:6443"
+echo "Agent node IP: ${TAILSCALE_IP}"
 
 sudo mkdir -p /etc/rancher/k3s
 
-# =========================
-# CONFIGURE REGISTRY
-# =========================
-
-if [ -n "${REGISTRY}" ]; then
-  echo "=== Configuring local registry ==="
-
+if [ -n "$REGISTRY" ]; then
+  echo "Configuring registry mirror: ${REGISTRY}"
   cat <<EOF | sudo tee /etc/rancher/k3s/registries.yaml >/dev/null
 mirrors:
-  "${REGISTRY}":
+  "$REGISTRY":
     endpoint:
-      - "http://${REGISTRY}"
-
+      - "http://$REGISTRY"
 configs:
-  "${REGISTRY}":
+  "$REGISTRY":
     tls:
       insecure_skip_verify: true
 EOF
-
 fi
 
-# =========================
-# INSTALL K3S AGENT
-# =========================
-
-echo "=== Installing K3s agent ==="
-
 curl -sfL https://get.k3s.io | \
-  K3S_URL="${K8S_MASTER}" \
-  K3S_TOKEN="${TOKEN}" \
+  K3S_URL="https://${K3S_MASTER_IP}:6443" \
+  K3S_TOKEN="$TOKEN" \
   INSTALL_K3S_EXEC="agent --node-ip=${TAILSCALE_IP} --flannel-iface=tailscale0" \
   sh -
 
-# =========================
-# DONE
-# =========================
-
 echo
 echo "=== SUCCESS ==="
-echo "Node joined cluster successfully"
-echo
-echo "Check on master:"
-echo "k"
+echo "VM agent joined the K3s cluster."
+echo "Check on master: kubectl get nodes -o wide"

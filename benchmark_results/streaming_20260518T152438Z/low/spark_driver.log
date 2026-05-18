@@ -1,0 +1,444 @@
+WARNING: Using incubator modules: jdk.incubator.vector
+26/05/18 15:24:52 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/05/18 15:24:53 INFO SparkContext: Running Spark version 4.0.2
+26/05/18 15:24:53 INFO SparkContext: OS info Linux, 7.0.0-1003-gcp, amd64
+26/05/18 15:24:53 INFO SparkContext: Java version 17.0.17
+26/05/18 15:24:53 INFO ResourceUtils: ==============================================================
+26/05/18 15:24:53 INFO ResourceUtils: No custom resources configured for spark.driver.
+26/05/18 15:24:53 INFO ResourceUtils: ==============================================================
+26/05/18 15:24:53 INFO SparkContext: Submitted application: StreamingToBronze
+26/05/18 15:24:53 INFO ResourceProfile: Default ResourceProfile created, executor resources: Map(cores -> name: cores, amount: 1, script: , vendor: , memory -> name: memory, amount: 2048, script: , vendor: , offHeap -> name: offHeap, amount: 0, script: , vendor: ), task resources: Map(cpus -> name: cpus, amount: 1.0)
+26/05/18 15:24:53 INFO ResourceProfile: Limiting resource is cpus at 1 tasks per executor
+26/05/18 15:24:53 INFO ResourceProfileManager: Added ResourceProfile id: 0
+26/05/18 15:24:53 INFO SecurityManager: Changing view acls to: spark,viet-k3s-google
+26/05/18 15:24:53 INFO SecurityManager: Changing modify acls to: spark,viet-k3s-google
+26/05/18 15:24:53 INFO SecurityManager: Changing view acls groups to: spark,viet-k3s-google
+26/05/18 15:24:53 INFO SecurityManager: Changing modify acls groups to: spark,viet-k3s-google
+26/05/18 15:24:53 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: spark, viet-k3s-google groups with view permissions: EMPTY; users with modify permissions: spark, viet-k3s-google; groups with modify permissions: EMPTY; RPC SSL disabled
+26/05/18 15:24:54 INFO Utils: Successfully started service 'sparkDriver' on port 7078.
+26/05/18 15:24:54 INFO SparkEnv: Registering MapOutputTracker
+26/05/18 15:24:54 INFO SparkEnv: Registering BlockManagerMaster
+26/05/18 15:24:54 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+26/05/18 15:24:54 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+26/05/18 15:24:54 INFO SparkEnv: Registering BlockManagerMasterHeartbeat
+26/05/18 15:24:54 INFO DiskBlockManager: Created local directory at /var/data/spark-57527e8b-989e-4aad-ab93-be1c3a3d0b60/blockmgr-a2dc735d-d811-4a16-83ed-79532951f4c9
+26/05/18 15:24:54 INFO SparkEnv: Registering OutputCommitCoordinator
+26/05/18 15:24:54 INFO JettyUtils: Start Jetty 0.0.0.0:4040 for SparkUI
+26/05/18 15:24:54 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+26/05/18 15:24:54 INFO SecurityManager: Changing view acls to: spark,viet-k3s-google
+26/05/18 15:24:54 INFO SecurityManager: Changing modify acls to: spark,viet-k3s-google
+26/05/18 15:24:54 INFO SecurityManager: Changing view acls groups to: spark,viet-k3s-google
+26/05/18 15:24:54 INFO SecurityManager: Changing modify acls groups to: spark,viet-k3s-google
+26/05/18 15:24:54 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: spark, viet-k3s-google groups with view permissions: EMPTY; users with modify permissions: spark, viet-k3s-google; groups with modify permissions: EMPTY; RPC SSL disabled
+26/05/18 15:24:54 INFO SparkKubernetesClientFactory: Auto-configuring K8S client using current context from users K8S config file
+26/05/18 15:24:58 INFO ExecutorPodsAllocator: Going to request 1 executors from Kubernetes for ResourceProfile Id: 0, target: 1, known: 0, sharedSlotFromPendingPods: 2147483647.
+26/05/18 15:24:58 INFO ExecutorPodsAllocator: Found 0 reusable PVCs from 0 PVCs
+26/05/18 15:24:58 INFO BasicExecutorFeatureStep: Decommissioning not enabled, skipping shutdown script
+26/05/18 15:24:59 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 7079.
+26/05/18 15:24:59 INFO NettyBlockTransferService: Server created on nyc-taxi-started-to-bronze-ba8fe29e3bb07bd1-driver-svc.lakehouse.svc 10.42.1.55:7079
+26/05/18 15:24:59 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+26/05/18 15:24:59 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, nyc-taxi-started-to-bronze-ba8fe29e3bb07bd1-driver-svc.lakehouse.svc, 7079, None)
+26/05/18 15:24:59 INFO BlockManagerMasterEndpoint: Registering block manager nyc-taxi-started-to-bronze-ba8fe29e3bb07bd1-driver-svc.lakehouse.svc:7079 with 434.4 MiB RAM, BlockManagerId(driver, nyc-taxi-started-to-bronze-ba8fe29e3bb07bd1-driver-svc.lakehouse.svc, 7079, None)
+26/05/18 15:24:59 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, nyc-taxi-started-to-bronze-ba8fe29e3bb07bd1-driver-svc.lakehouse.svc, 7079, None)
+26/05/18 15:24:59 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, nyc-taxi-started-to-bronze-ba8fe29e3bb07bd1-driver-svc.lakehouse.svc, 7079, None)
+26/05/18 15:25:05 INFO KubernetesClusterSchedulerBackend$KubernetesDriverEndpoint: Registered executor NettyRpcEndpointRef(spark-client://Executor) (10.42.1.56:59992) with ID 1, ResourceProfileId 0
+26/05/18 15:25:05 INFO KubernetesClusterSchedulerBackend: SchedulerBackend is ready for scheduling beginning after reached minRegisteredResourcesRatio: 0.8
+26/05/18 15:25:05 INFO BlockManagerMasterEndpoint: Registering block manager 10.42.1.56:40999 with 1048.8 MiB RAM, BlockManagerId(1, 10.42.1.56, 40999, None)
+26/05/18 15:25:09 INFO SharedState: Setting hive.metastore.warehouse.dir ('null') to the value of spark.sql.warehouse.dir.
+26/05/18 15:25:09 INFO SharedState: Warehouse path is 'file:/opt/spark/work-dir/spark-warehouse'.
+26/05/18 15:25:09 INFO StateStoreCoordinatorRef: Registered StateStoreCoordinator endpoint
+--- Reading started events from kafka topic=nyc-taxi-trip-started ---
+26/05/18 15:25:10 WARN KafkaSourceProvider: Kafka option 'kafka.group.id' has been set on this query, it is
+ not recommended to set this option. This option is unsafe to use since multiple concurrent
+ queries or sources using the same group id will interfere with each other as they are part
+ of the same consumer group. Restarted queries may also suffer interference from the
+ previous run having the same group id. The user should have only one query per group id,
+ and/or set the option 'kafka.session.timeout.ms' to be very small so that the Kafka
+ consumers from the previous query are marked dead by the Kafka group coordinator before the
+ restarted query starts running.
+    
+--- Decoding avro ---
+--- Writing started events to Bronze path=s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started, checkpoint=s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started ---
+26/05/18 15:25:12 WARN MetricsConfig: Cannot locate configuration: tried hadoop-metrics2-s3a-file-system.properties,hadoop-metrics2.properties
+26/05/18 15:25:12 INFO MetricsSystemImpl: Scheduled Metric snapshot period at 10 second(s).
+26/05/18 15:25:12 INFO MetricsSystemImpl: s3a-file-system metrics system started
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+26/05/18 15:25:13 INFO DelegatingLogStore: LogStore LogStoreAdapter(io.delta.storage.S3SingleDriverLogStore) is used for scheme s3a
+26/05/18 15:25:13 INFO DeltaLog: Creating initial snapshot without metadata, because the directory is empty
+26/05/18 15:25:14 INFO DummySnapshot: [tableId=5a184b5f-33f2-45f7-9988-ccff62bf6866] Created snapshot DummySnapshot(path=s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log, version=-1, metadata=Metadata(95ca0e2a-ece5-4d59-921b-a0766d415905,null,null,Format(parquet,Map()),null,List(),Map(),Some(1779117914006)), logSegment=LogSegment(s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log,-1,List(),org.apache.spark.sql.delta.EmptyCheckpointProvider$@60195aa5,-1), checksumOpt=None)
+26/05/18 15:25:14 INFO ResolveWriteToStream: Checkpoint root s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started resolved to s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started.
+26/05/18 15:25:14 WARN ResolveWriteToStream: spark.sql.adaptive.enabled is not supported in streaming DataFrames/Datasets and will be disabled.
+26/05/18 15:25:14 INFO deprecation: org.apache.hadoop.shaded.io.bytes.per.checksum is deprecated. Instead, use dfs.bytes-per-checksum
+26/05/18 15:25:14 INFO CheckpointFileManager: Writing atomically to s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/metadata using temp file s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/.metadata.db4d6d87-3a93-4edb-99dd-63da50269a6b.tmp
+26/05/18 15:25:14 INFO CheckpointFileManager: Renamed temp file s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/.metadata.db4d6d87-3a93-4edb-99dd-63da50269a6b.tmp to s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/metadata
+26/05/18 15:25:15 INFO MicroBatchExecution: Starting [id = e20652f0-504a-4c6f-afa6-1208fc13a890, runId = 43415452-6966-47d3-8a28-ff5aaffcdb1a]. Use s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started to store the query checkpoint.
+{"event_kind": "started", "metric_type": "spark_query_started", "name": null, "query_id": "e20652f0-504a-4c6f-afa6-1208fc13a890", "run_id": "43415452-6966-47d3-8a28-ff5aaffcdb1a", "topic": "nyc-taxi-trip-started"}
+26/05/18 15:25:15 INFO MicroBatchExecution: Reading table [org.apache.spark.sql.kafka010.KafkaSourceProvider$KafkaTable@2154009a] from DataSourceV2 named 'kafka' [org.apache.spark.sql.kafka010.KafkaSourceProvider@8166b57]
+26/05/18 15:25:15 WARN KafkaSourceProvider: Kafka option 'kafka.group.id' has been set on this query, it is
+ not recommended to set this option. This option is unsafe to use since multiple concurrent
+ queries or sources using the same group id will interfere with each other as they are part
+ of the same consumer group. Restarted queries may also suffer interference from the
+ previous run having the same group id. The user should have only one query per group id,
+ and/or set the option 'kafka.session.timeout.ms' to be very small so that the Kafka
+ consumers from the previous query are marked dead by the Kafka group coordinator before the
+ restarted query starts running.
+    
+26/05/18 15:25:15 WARN SparkStringUtils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.sql.debug.maxToStringFields'.
+26/05/18 15:25:15 INFO MicroBatchExecution: Finish initializing with logical plan:
+~WriteToMicroBatchDataSourceV1 DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started], e20652f0-504a-4c6f-afa6-1208fc13a890, [path=s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started, checkpointLocation=s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started], Append
++- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, ingest_mode#58, ingest_timestamp#59, event_time#60, trip_date#61, vendor_id#62, pickup_datetime#63, passenger_count#64L, pulocation_id#65, dolocation_id#66]
+   +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, ingest_mode#58, ingest_timestamp#59, event_time#60, trip_date#61, vendor_id#62, pickup_datetime#63, dropoff_datetime#48, passenger_count#64L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#65, cast(dolocation_id#51 as int) AS dolocation_id#66, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+      +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, ingest_mode#58, ingest_timestamp#59, event_time#60, trip_date#61, vendor_id#62, pickup_datetime#63, dropoff_datetime#48, passenger_count#64L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, cast(pulocation_id#50 as int) AS pulocation_id#65, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+         +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, ingest_mode#58, ingest_timestamp#59, event_time#60, trip_date#61, vendor_id#62, pickup_datetime#63, dropoff_datetime#48, cast(passenger_count#29L as bigint) AS passenger_count#64L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+            +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, ingest_mode#58, ingest_timestamp#59, event_time#60, trip_date#61, vendor_id#62, cast(pickup_datetime#47 as timestamp) AS pickup_datetime#63, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+               +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, ingest_mode#58, ingest_timestamp#59, event_time#60, trip_date#61, cast(vendor_id#46 as int) AS vendor_id#62, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                  +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, ingest_mode#58, ingest_timestamp#59, event_time#60, cast(trip_date#24 as string) AS trip_date#61, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                     +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, ingest_mode#58, ingest_timestamp#59, cast(event_time#23 as timestamp) AS event_time#60, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                        +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, ingest_mode#58, cast(ingest_timestamp#22 as timestamp) AS ingest_timestamp#59, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                           +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, source_file#57, cast(ingest_mode#21 as string) AS ingest_mode#58, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                              +- ~Project [event_id#53, event_type#54, schema_version#55, trip_id#56, cast(source_file#20 as string) AS source_file#57, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                 +- ~Project [event_id#53, event_type#54, schema_version#55, cast(trip_id#19 as string) AS trip_id#56, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                    +- ~Project [event_id#53, event_type#54, cast(schema_version#18 as string) AS schema_version#55, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                       +- ~Project [event_id#53, cast(event_type#17 as string) AS event_type#54, schema_version#18, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                          +- ~Project [cast(event_id#16 as string) AS event_id#53, event_type#17, schema_version#18, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                             +- ~Project [event_id#16, event_type#17, schema_version#18, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                                +- ~Project [event_id#16, event_type#17, schema_version#18, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, pulocation_id#50, DOLocationID#35 AS dolocation_id#51, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                                   +- ~Project [event_id#16, event_type#17, schema_version#18, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, rate_code_id#49L, store_and_fwd_flag#33, PULocationID#34 AS pulocation_id#50, DOLocationID#35, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                                      +- ~Project [event_id#16, event_type#17, schema_version#18, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, RatecodeID#32L AS rate_code_id#49L, store_and_fwd_flag#33, PULocationID#34, DOLocationID#35, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                                         +- ~Project [event_id#16, event_type#17, schema_version#18, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, pickup_datetime#47, tpep_dropoff_datetime#28 AS dropoff_datetime#48, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, RatecodeID#32L, store_and_fwd_flag#33, PULocationID#34, DOLocationID#35, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                                            +- ~Project [event_id#16, event_type#17, schema_version#18, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, vendor_id#46, tpep_pickup_datetime#27 AS pickup_datetime#47, tpep_dropoff_datetime#28, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, RatecodeID#32L, store_and_fwd_flag#33, PULocationID#34, DOLocationID#35, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                                               +- ~Project [event_id#16, event_type#17, schema_version#18, trip_id#19, source_file#20, ingest_mode#21, ingest_timestamp#22, event_time#23, trip_date#24, VendorID#26 AS vendor_id#46, tpep_pickup_datetime#27, tpep_dropoff_datetime#28, passenger_count#29L, trip_distance#30, trip_duration_seconds#31L, RatecodeID#32L, store_and_fwd_flag#33, PULocationID#34, DOLocationID#35, payment_type#36L, fare_amount#37, extra#38, mta_tax#39, tip_amount#40, tolls_amount#41, ... 4 more fields]
+                                                                  +- ~Filter (event_type#17 = trip_started)
+                                                                     +- ~Project [event#14.metadata.event_id AS event_id#16, event#14.metadata.event_type AS event_type#17, event#14.metadata.schema_version AS schema_version#18, event#14.metadata.trip_id AS trip_id#19, event#14.metadata.source_file AS source_file#20, event#14.metadata.ingest_mode AS ingest_mode#21, event#14.metadata.ingest_timestamp AS ingest_timestamp#22, event#14.metadata.event_time AS event_time#23, event#14.metadata.trip_date AS trip_date#24, event#14.payload.VendorID AS VendorID#26, event#14.payload.tpep_pickup_datetime AS tpep_pickup_datetime#27, event#14.payload.tpep_dropoff_datetime AS tpep_dropoff_datetime#28, event#14.payload.passenger_count AS passenger_count#29L, event#14.payload.trip_distance AS trip_distance#30, event#14.payload.trip_duration_seconds AS trip_duration_seconds#31L, event#14.payload.RatecodeID AS RatecodeID#32L, event#14.payload.store_and_fwd_flag AS store_and_fwd_flag#33, event#14.payload.PULocationID AS PULocationID#34, event#14.payload.DOLocationID AS DOLocationID#35, event#14.payload.payment_type AS payment_type#36L, event#14.payload.fare_amount AS fare_amount#37, event#14.payload.extra AS extra#38, event#14.payload.mta_tax AS mta_tax#39, event#14.payload.tip_amount AS tip_amount#40, event#14.payload.tolls_amount AS tolls_amount#41, ... 4 more fields]
+                                                                        +- ~Filter isnotnull(event#14)
+                                                                           +- ~Project [from_avro(value#8, {
+  "type": "record",
+  "name": "TaxiTripEvent",
+  "namespace": "com.bigdata.nyctaxi",
+  "fields": [
+    {
+      "name": "metadata",
+      "type": {
+        "type": "record",
+        "name": "EventMetadata",
+        "fields": [
+          {"name": "event_id", "type": "string"},
+          {"name": "event_type", "type": "string"},
+          {"name": "schema_version", "type": "string"},
+          {"name": "trip_id", "type": "string"},
+          {"name": "source_file", "type": ["null", "string"], "default": null},
+          {"name": "ingest_mode", "type": "string"},
+          {"name": "ingest_timestamp", "type": "string"},
+          {"name": "event_time", "type": ["null", "string"], "default": null},
+          {"name": "trip_date", "type": ["null", "string"], "default": null}
+        ]
+      }
+    },
+    {
+      "name": "payload",
+      "type": {
+        "type": "record",
+        "name": "TaxiTripPayload",
+        "fields": [
+          {"name": "VendorID", "type": ["null", "int"], "default": null},
+          {"name": "tpep_pickup_datetime", "type": ["null", "string"], "default": null},
+          {"name": "tpep_dropoff_datetime", "type": ["null", "string"], "default": null},
+          {"name": "passenger_count", "type": ["null", "long"], "default": null},
+          {"name": "trip_distance", "type": ["null", "double"], "default": null},
+          {"name": "trip_duration_seconds", "type": ["null", "long"], "default": null},
+          {"name": "RatecodeID", "type": ["null", "long"], "default": null},
+          {"name": "store_and_fwd_flag", "type": ["null", "string"], "default": null},
+          {"name": "PULocationID", "type": ["null", "int"], "default": null},
+          {"name": "DOLocationID", "type": ["null", "int"], "default": null},
+          {"name": "payment_type", "type": ["null", "long"], "default": null},
+          {"name": "fare_amount", "type": ["null", "double"], "default": null},
+          {"name": "extra", "type": ["null", "double"], "default": null},
+          {"name": "mta_tax", "type": ["null", "double"], "default": null},
+          {"name": "tip_amount", "type": ["null", "double"], "default": null},
+          {"name": "tolls_amount", "type": ["null", "double"], "default": null},
+          {"name": "improvement_surcharge", "type": ["null", "double"], "default": null},
+          {"name": "total_amount", "type": ["null", "double"], "default": null},
+          {"name": "congestion_surcharge", "type": ["null", "double"], "default": null},
+          {"name": "Airport_fee", "type": ["null", "double"], "default": null}
+        ]
+      }
+    }
+  ]
+}
+, map(mode, PERMISSIVE)) AS event#14]
+                                                                              +- ~StreamingDataSourceV2ScanRelation[key#7, value#8, topic#9, partition#10, offset#11L, timestamp#12, timestampType#13] KafkaTable
+
+26/05/18 15:25:15 INFO OffsetSeqLog: BatchIds found from listing: 
+26/05/18 15:25:15 INFO OffsetSeqLog: BatchIds found from listing: 
+26/05/18 15:25:15 INFO MicroBatchExecution: Starting new streaming query.
+26/05/18 15:25:15 INFO MicroBatchExecution: Stream started from {}
+26/05/18 15:25:15 INFO AdminClientConfig: AdminClientConfig values: 
+	auto.include.jmx.reporter = true
+	bootstrap.controllers = []
+	bootstrap.servers = [my-kafka-cluster-kafka-bootstrap.ingestion.svc.cluster.local:9092]
+	client.dns.lookup = use_all_dns_ips
+	client.id = 
+	connections.max.idle.ms = 300000
+	default.api.timeout.ms = 60000
+	enable.metrics.push = true
+	metadata.max.age.ms = 300000
+	metadata.recovery.strategy = none
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retries = 2147483647
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.header.urlencode = false
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+
+26/05/18 15:25:15 INFO AdminClientConfig: These configurations '[key.deserializer, value.deserializer, enable.auto.commit, max.poll.records, group.id, auto.offset.reset]' were supplied but are not used yet.
+26/05/18 15:25:15 INFO AppInfoParser: Kafka version: 3.9.0
+26/05/18 15:25:15 INFO AppInfoParser: Kafka commitId: 84caaa6e9da06435
+26/05/18 15:25:15 INFO AppInfoParser: Kafka startTimeMs: 1779117915598
+26/05/18 15:25:16 INFO CheckpointFileManager: Writing atomically to s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/sources/0/0 using temp file s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/sources/0/.0.730123d1-5c44-449a-b399-ce0abd6a2031.tmp
+26/05/18 15:25:16 INFO CheckpointFileManager: Renamed temp file s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/sources/0/.0.730123d1-5c44-449a-b399-ce0abd6a2031.tmp to s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/sources/0/0
+26/05/18 15:25:16 INFO KafkaMicroBatchStream: Initial offsets: {"nyc-taxi-trip-started":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0}}
+26/05/18 15:25:16 INFO CheckpointFileManager: Writing atomically to s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/offsets/0 using temp file s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/offsets/.0.2bfbe284-2b9e-461f-a883-a8f9473d92dc.tmp
+26/05/18 15:25:16 INFO CheckpointFileManager: Renamed temp file s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/offsets/.0.2bfbe284-2b9e-461f-a883-a8f9473d92dc.tmp to s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/offsets/0
+26/05/18 15:25:16 INFO MicroBatchExecution: Committed offsets for batch 0. Metadata OffsetSeqMetadata(0,1779117916253,HashMap(spark.sql.streaming.stateStore.providerClass -> org.apache.spark.sql.execution.streaming.state.HDFSBackedStateStoreProvider, spark.sql.streaming.stateStore.rocksdb.formatVersion -> 5, spark.sql.streaming.stateStore.encodingFormat -> unsaferow, spark.sql.streaming.statefulOperator.useStrictDistribution -> true, spark.sql.streaming.flatMapGroupsWithState.stateFormatVersion -> 2, spark.sql.streaming.multipleWatermarkPolicy -> min, spark.sql.streaming.aggregation.stateFormatVersion -> 2, spark.sql.shuffle.partitions -> 4, spark.sql.streaming.join.stateFormatVersion -> 2, spark.sql.streaming.stateStore.compression.codec -> lz4, spark.sql.optimizer.pruneFiltersCanPruneStreamingSubplan -> false))
+26/05/18 15:25:17 INFO DeltaLog: Creating initial snapshot without metadata, because the directory is empty
+26/05/18 15:25:17 INFO DummySnapshot: [tableId=95ca0e2a-ece5-4d59-921b-a0766d415905] Created snapshot DummySnapshot(path=s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log, version=-1, metadata=Metadata(a3c583b3-2a74-4f38-95f9-8bded0f5694a,null,null,Format(parquet,Map()),null,List(),Map(),Some(1779117917937)), logSegment=LogSegment(s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log,-1,List(),org.apache.spark.sql.delta.EmptyCheckpointProvider$@60195aa5,-1), checksumOpt=None)
+26/05/18 15:25:18 INFO OptimisticTransaction: [tableId=a3c583b3,txnId=0c3bca05] Updated metadata from - to Metadata(57e19298-9c81-4764-91e3-d8de2cbad5ef,null,null,Format(parquet,Map()),{"type":"struct","fields":[{"name":"event_id","type":"string","nullable":true,"metadata":{}},{"name":"event_type","type":"string","nullable":true,"metadata":{}},{"name":"schema_version","type":"string","nullable":true,"metadata":{}},{"name":"trip_id","type":"string","nullable":true,"metadata":{}},{"name":"source_file","type":"string","nullable":true,"metadata":{}},{"name":"ingest_mode","type":"string","nullable":true,"metadata":{}},{"name":"ingest_timestamp","type":"timestamp","nullable":true,"metadata":{}},{"name":"event_time","type":"timestamp","nullable":true,"metadata":{}},{"name":"trip_date","type":"string","nullable":true,"metadata":{}},{"name":"vendor_id","type":"integer","nullable":true,"metadata":{}},{"name":"pickup_datetime","type":"timestamp","nullable":true,"metadata":{}},{"name":"passenger_count","type":"long","nullable":true,"metadata":{}},{"name":"pulocation_id","type":"integer","nullable":true,"metadata":{}},{"name":"dolocation_id","type":"integer","nullable":true,"metadata":{}}]},List(),Map(),Some(1779117918044))
+26/05/18 15:25:19 INFO ParquetUtils: Using default output committer for Parquet: org.apache.parquet.hadoop.ParquetOutputCommitter
+26/05/18 15:25:20 INFO CodeGenerator: Code generated in 894.171423 ms
+26/05/18 15:25:20 INFO KafkaOffsetReaderAdmin: Partitions added: Map()
+26/05/18 15:25:20 INFO SparkContext: Starting job: start at NativeMethodAccessorImpl.java:0
+26/05/18 15:25:20 INFO DAGScheduler: Got job 0 (start at NativeMethodAccessorImpl.java:0) with 1 output partitions
+26/05/18 15:25:20 INFO DAGScheduler: Final stage: ResultStage 0 (start at NativeMethodAccessorImpl.java:0)
+26/05/18 15:25:20 INFO DAGScheduler: Parents of final stage: List()
+26/05/18 15:25:20 INFO DAGScheduler: Missing parents: List()
+26/05/18 15:25:20 INFO DAGScheduler: Submitting ResultStage 0 (ParallelCollectionRDD[3] at start at NativeMethodAccessorImpl.java:0), which has no missing parents
+26/05/18 15:25:21 INFO MemoryStore: MemoryStore started with capacity 434.4 MiB
+26/05/18 15:25:21 INFO MemoryStore: Block broadcast_0 stored as values in memory (estimated size 394.3 KiB, free 434.0 MiB)
+26/05/18 15:25:21 INFO MemoryStore: Block broadcast_0_piece0 stored as bytes in memory (estimated size 139.6 KiB, free 433.9 MiB)
+26/05/18 15:25:21 INFO SparkContext: Created broadcast 0 from broadcast at DAGScheduler.scala:1676
+26/05/18 15:25:21 INFO DAGScheduler: Submitting 1 missing tasks from ResultStage 0 (ParallelCollectionRDD[3] at start at NativeMethodAccessorImpl.java:0) (first 15 tasks are for partitions Vector(0))
+26/05/18 15:25:21 INFO TaskSchedulerImpl: Adding task set 0.0 with 1 tasks resource profile 0
+26/05/18 15:25:21 INFO TaskSetManager: Starting task 0.0 in stage 0.0 (TID 0) (10.42.1.56,executor 1, partition 0, PROCESS_LOCAL, 9735 bytes) 
+26/05/18 15:25:30 INFO TaskSetManager: Finished task 0.0 in stage 0.0 (TID 0) in 8909 ms on 10.42.1.56 (executor 1) (1/1)
+26/05/18 15:25:30 INFO TaskSchedulerImpl: Removed TaskSet 0.0 whose tasks have all completed, from pool 
+26/05/18 15:25:30 INFO DAGScheduler: ResultStage 0 (start at NativeMethodAccessorImpl.java:0) finished in 9403 ms
+26/05/18 15:25:30 INFO DAGScheduler: Job 0 is finished. Cancelling potential speculative or zombie tasks for this job
+26/05/18 15:25:30 INFO TaskSchedulerImpl: Canceling stage 0
+26/05/18 15:25:30 INFO TaskSchedulerImpl: Killing all running tasks in stage 0: Stage finished
+26/05/18 15:25:30 INFO DAGScheduler: Job 0 finished: start at NativeMethodAccessorImpl.java:0, took 9431.390618 ms
+26/05/18 15:25:30 INFO DeltaFileFormatWriter: Start to commit write Job 500bb8e6-ca2b-4f83-b949-12a1302ba9cf.
+26/05/18 15:25:30 INFO DeltaFileFormatWriter: Write Job 500bb8e6-ca2b-4f83-b949-12a1302ba9cf committed. Elapsed time: 0 ms.
+26/05/18 15:25:30 INFO DeltaFileFormatWriter: Finished processing stats for write job 500bb8e6-ca2b-4f83-b949-12a1302ba9cf.
+26/05/18 15:25:30 INFO DeltaSink: Wrote 0 files, with total size 0, 0 logical records, duration=12082 ms.
+26/05/18 15:25:30 INFO OptimisticTransaction: [tableId=a3c583b3,txnId=0c3bca05] Attempting to commit version 0 with 4 actions with Serializable isolation level
+26/05/18 15:25:30 INFO OptimisticTransaction: Incremental commit: starting with snapshot version -1
+26/05/18 15:25:32 INFO CodeGenerator: Code generated in 492.149335 ms
+26/05/18 15:25:33 INFO SparkContext: Starting job: start at NativeMethodAccessorImpl.java:0
+26/05/18 15:25:33 INFO DAGScheduler: Job 1 finished: start at NativeMethodAccessorImpl.java:0, took 0.249451 ms
+26/05/18 15:25:33 INFO DeltaLog: Creating a new snapshot v0 for commit version 0
+26/05/18 15:25:33 INFO DeltaLog: Loading version 0.
+26/05/18 15:25:33 INFO Snapshot: [tableId=a3c583b3-2a74-4f38-95f9-8bded0f5694a] Created snapshot Snapshot(path=s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log, version=0, metadata=Metadata(57e19298-9c81-4764-91e3-d8de2cbad5ef,null,null,Format(parquet,Map()),{"type":"struct","fields":[{"name":"event_id","type":"string","nullable":true,"metadata":{}},{"name":"event_type","type":"string","nullable":true,"metadata":{}},{"name":"schema_version","type":"string","nullable":true,"metadata":{}},{"name":"trip_id","type":"string","nullable":true,"metadata":{}},{"name":"source_file","type":"string","nullable":true,"metadata":{}},{"name":"ingest_mode","type":"string","nullable":true,"metadata":{}},{"name":"ingest_timestamp","type":"timestamp","nullable":true,"metadata":{}},{"name":"event_time","type":"timestamp","nullable":true,"metadata":{}},{"name":"trip_date","type":"string","nullable":true,"metadata":{}},{"name":"vendor_id","type":"integer","nullable":true,"metadata":{}},{"name":"pickup_datetime","type":"timestamp","nullable":true,"metadata":{}},{"name":"passenger_count","type":"long","nullable":true,"metadata":{}},{"name":"pulocation_id","type":"integer","nullable":true,"metadata":{}},{"name":"dolocation_id","type":"integer","nullable":true,"metadata":{}}]},List(),Map(),Some(1779117918044)), logSegment=LogSegment(s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log,0,List(S3AFileStatus{path=s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log/00000000000000000000.json; isDirectory=false; length=1971; replication=1; blocksize=33554432; modification_time=1779117930000; access_time=0; owner=spark; group=spark; permission=rw-rw-rw-; isSymlink=false; hasAcl=false; isEncrypted=true; isErasureCoded=false} isEmptyDirectory=FALSE eTag="5e27c701cefbcef4168080a79dedb633" versionId=null),org.apache.spark.sql.delta.EmptyCheckpointProvider$@60195aa5,1779117930000), checksumOpt=Some(VersionChecksum(Some(0c3bca05-3223-4e1a-a1a2-db612075daf8),0,0,None,None,1,1,None,Some(List(SetTransaction(e20652f0-504a-4c6f-afa6-1208fc13a890,0,Some(1779117930209)))),Some(List()),Metadata(57e19298-9c81-4764-91e3-d8de2cbad5ef,null,null,Format(parquet,Map()),{"type":"struct","fields":[{"name":"event_id","type":"string","nullable":true,"metadata":{}},{"name":"event_type","type":"string","nullable":true,"metadata":{}},{"name":"schema_version","type":"string","nullable":true,"metadata":{}},{"name":"trip_id","type":"string","nullable":true,"metadata":{}},{"name":"source_file","type":"string","nullable":true,"metadata":{}},{"name":"ingest_mode","type":"string","nullable":true,"metadata":{}},{"name":"ingest_timestamp","type":"timestamp","nullable":true,"metadata":{}},{"name":"event_time","type":"timestamp","nullable":true,"metadata":{}},{"name":"trip_date","type":"string","nullable":true,"metadata":{}},{"name":"vendor_id","type":"integer","nullable":true,"metadata":{}},{"name":"pickup_datetime","type":"timestamp","nullable":true,"metadata":{}},{"name":"passenger_count","type":"long","nullable":true,"metadata":{}},{"name":"pulocation_id","type":"integer","nullable":true,"metadata":{}},{"name":"dolocation_id","type":"integer","nullable":true,"metadata":{}}]},List(),Map(),Some(1779117918044)),Protocol(1,2),None,None,Some(List()))))
+26/05/18 15:25:33 INFO DeltaLog: Updated snapshot to Snapshot(path=s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log, version=0, metadata=Metadata(57e19298-9c81-4764-91e3-d8de2cbad5ef,null,null,Format(parquet,Map()),{"type":"struct","fields":[{"name":"event_id","type":"string","nullable":true,"metadata":{}},{"name":"event_type","type":"string","nullable":true,"metadata":{}},{"name":"schema_version","type":"string","nullable":true,"metadata":{}},{"name":"trip_id","type":"string","nullable":true,"metadata":{}},{"name":"source_file","type":"string","nullable":true,"metadata":{}},{"name":"ingest_mode","type":"string","nullable":true,"metadata":{}},{"name":"ingest_timestamp","type":"timestamp","nullable":true,"metadata":{}},{"name":"event_time","type":"timestamp","nullable":true,"metadata":{}},{"name":"trip_date","type":"string","nullable":true,"metadata":{}},{"name":"vendor_id","type":"integer","nullable":true,"metadata":{}},{"name":"pickup_datetime","type":"timestamp","nullable":true,"metadata":{}},{"name":"passenger_count","type":"long","nullable":true,"metadata":{}},{"name":"pulocation_id","type":"integer","nullable":true,"metadata":{}},{"name":"dolocation_id","type":"integer","nullable":true,"metadata":{}}]},List(),Map(),Some(1779117918044)), logSegment=LogSegment(s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log,0,List(S3AFileStatus{path=s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log/00000000000000000000.json; isDirectory=false; length=1971; replication=1; blocksize=33554432; modification_time=1779117930000; access_time=0; owner=spark; group=spark; permission=rw-rw-rw-; isSymlink=false; hasAcl=false; isEncrypted=true; isErasureCoded=false} isEmptyDirectory=FALSE eTag="5e27c701cefbcef4168080a79dedb633" versionId=null),org.apache.spark.sql.delta.EmptyCheckpointProvider$@60195aa5,1779117930000), checksumOpt=Some(VersionChecksum(Some(0c3bca05-3223-4e1a-a1a2-db612075daf8),0,0,None,None,1,1,None,Some(List(SetTransaction(e20652f0-504a-4c6f-afa6-1208fc13a890,0,Some(1779117930209)))),Some(List()),Metadata(57e19298-9c81-4764-91e3-d8de2cbad5ef,null,null,Format(parquet,Map()),{"type":"struct","fields":[{"name":"event_id","type":"string","nullable":true,"metadata":{}},{"name":"event_type","type":"string","nullable":true,"metadata":{}},{"name":"schema_version","type":"string","nullable":true,"metadata":{}},{"name":"trip_id","type":"string","nullable":true,"metadata":{}},{"name":"source_file","type":"string","nullable":true,"metadata":{}},{"name":"ingest_mode","type":"string","nullable":true,"metadata":{}},{"name":"ingest_timestamp","type":"timestamp","nullable":true,"metadata":{}},{"name":"event_time","type":"timestamp","nullable":true,"metadata":{}},{"name":"trip_date","type":"string","nullable":true,"metadata":{}},{"name":"vendor_id","type":"integer","nullable":true,"metadata":{}},{"name":"pickup_datetime","type":"timestamp","nullable":true,"metadata":{}},{"name":"passenger_count","type":"long","nullable":true,"metadata":{}},{"name":"pulocation_id","type":"integer","nullable":true,"metadata":{}},{"name":"dolocation_id","type":"integer","nullable":true,"metadata":{}}]},List(),Map(),Some(1779117918044)),Protocol(1,2),None,None,Some(List()))))
+26/05/18 15:25:33 INFO DeltaLogFileIndex: Created DeltaLogFileIndex(JSON, numFilesInSegment: 1, totalFileSize: 1971)
+26/05/18 15:25:33 INFO OptimisticTransaction: [tableId=a3c583b3,txnId=0c3bca05] Committed delta #0 to s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log
+26/05/18 15:25:33 INFO ChecksumHook: Writing checksum file for table path s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log version 0
+26/05/18 15:25:33 INFO CheckpointFileManager: Writing atomically to s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log/00000000000000000000.crc using temp file s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log/.00000000000000000000.crc.82dc5f9f-0f50-4bc4-a8ea-a80ef23018ee.tmp
+26/05/18 15:25:33 INFO CheckpointFileManager: Renamed temp file s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log/.00000000000000000000.crc.82dc5f9f-0f50-4bc4-a8ea-a80ef23018ee.tmp to s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started/_delta_log/00000000000000000000.crc
+26/05/18 15:25:33 INFO DeltaSink: Committed transaction, batchId=0, duration=3626 ms, added 0 files, removed 0 files.
+26/05/18 15:25:33 INFO CheckpointFileManager: Writing atomically to s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/commits/0 using temp file s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/commits/.0.88360b4c-b14e-46f7-8d43-56ae51e52d85.tmp
+26/05/18 15:25:34 INFO CheckpointFileManager: Renamed temp file s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/commits/.0.88360b4c-b14e-46f7-8d43-56ae51e52d85.tmp to s3a://lakehouse/_checkpoints/benchmark/20260518T152438Z/low/started/commits/0
+26/05/18 15:25:34 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=1
+26/05/18 15:25:34 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:25:34 INFO ProgressReporter: Streaming query made progress: {
+  "id" : "e20652f0-504a-4c6f-afa6-1208fc13a890",
+  "runId" : "43415452-6966-47d3-8a28-ff5aaffcdb1a",
+  "name" : null,
+  "timestamp" : "2026-05-18T15:25:15.330Z",
+  "batchId" : 0,
+  "batchDuration" : 19084,
+  "numInputRows" : 0,
+  "inputRowsPerSecond" : 0.0,
+  "processedRowsPerSecond" : 0.0,
+  "durationMs" : {
+    "addBatch" : 16112,
+    "commitOffsets" : 510,
+    "getBatch" : 104,
+    "latestOffset" : 918,
+    "queryPlanning" : 1242,
+    "triggerExecution" : 19081,
+    "walCommit" : 171
+  },
+  "stateOperators" : [ ],
+  "sources" : [ {
+    "description" : "KafkaV2[Subscribe[nyc-taxi-trip-started]]",
+    "startOffset" : null,
+    "endOffset" : {
+      "nyc-taxi-trip-started" : {
+        "0" : 0,
+        "1" : 0,
+        "2" : 0,
+        "3" : 0,
+        "4" : 0,
+        "5" : 0
+      }
+    },
+    "latestOffset" : {
+      "nyc-taxi-trip-started" : {
+        "0" : 0,
+        "1" : 0,
+        "2" : 0,
+        "3" : 0,
+        "4" : 0,
+        "5" : 0
+      }
+    },
+    "numInputRows" : 0,
+    "inputRowsPerSecond" : 0.0,
+    "processedRowsPerSecond" : 0.0,
+    "metrics" : {
+      "avgOffsetsBehindLatest" : "0.0",
+      "maxOffsetsBehindLatest" : "0",
+      "minOffsetsBehindLatest" : "0"
+    }
+  } ],
+  "sink" : {
+    "description" : "DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started]",
+    "numOutputRows" : -1
+  }
+}
+26/05/18 15:25:34 WARN ProcessingTimeExecutor: Current batch is falling behind. The trigger interval is 10000} milliseconds, but spent 19177 milliseconds
+26/05/18 15:25:34 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:25:34 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+[benchmark][spark_progress] {"add_batch_ms": 16112, "batch_id": 0, "end_offset": {"nyc-taxi-trip-started": {"0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0}}, "event_kind": "started", "get_batch_ms": 104, "input_rows_per_second": 0.0, "kafka_group_id": "nyc-taxi-bench-low-20260518T152438Z-started", "latest_offset": {"nyc-taxi-trip-started": {"0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0}}, "metric_type": "spark_microbatch_progress", "num_input_rows": 0, "processed_rows_per_second": 0.0, "start_offset": null, "timestamp": "2026-05-18T15:25:15.330Z", "topic": "nyc-taxi-trip-started", "trigger_execution_ms": 19081}
+26/05/18 15:25:40 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:25:40 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:25:50 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:25:50 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:25:50 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:26:00 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:26:00 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:26:00 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:26:10 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:26:10 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:26:10 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:26:20 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:26:20 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:26:20 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:26:30 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:26:30 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:26:40 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:26:40 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:26:40 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:26:50 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:26:50 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:26:50 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:27:00 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:27:00 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:27:00 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:27:10 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:27:10 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:27:10 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:27:20 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:27:20 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:27:20 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:27:30 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:27:30 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:27:40 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:27:40 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:27:40 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:27:50 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:27:50 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:27:50 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:28:00 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:28:00 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:28:00 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:28:10 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:28:10 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:28:20 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:28:20 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:28:20 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:28:30 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:28:30 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:28:40 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:28:40 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:28:40 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:28:50 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:28:50 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:28:50 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:29:00 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:29:00 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:29:00 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:29:10 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:29:10 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:29:20 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:29:20 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:29:20 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:29:30 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:29:30 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:29:30 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.
+26/05/18 15:29:40 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:29:40 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:29:50 INFO MicroBatchExecutionContext: Extracting source progress metrics for source=KafkaV2[Subscribe[nyc-taxi-trip-started]] took duration_ms=0
+26/05/18 15:29:50 INFO MicroBatchExecutionContext: Extracting sink progress metrics for sink=DeltaSink[s3a://lakehouse/benchmark/bronze/20260518T152438Z/low/started] took duration_ms=0
+26/05/18 15:29:50 INFO ProgressReporter: Streaming query has been idle and waiting for new data more than 10000 ms.

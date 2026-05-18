@@ -1,0 +1,382 @@
+
+# timestamp=2026-05-18T15:32:33Z
+error: metrics not available yet
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             10m          305Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      18m          512Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      18m          627Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   21m          295Mi           
+
+# timestamp=2026-05-18T15:32:44Z
+error: metrics not available yet
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             2m           306Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           220Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      23m          512Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      24m          628Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   8m           296Mi           
+
+# timestamp=2026-05-18T15:32:54Z
+POD                                                  NAME                      CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                    1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver   762m         426Mi           
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           306Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      15m          513Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      16m          626Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:33:04Z
+POD                                                  NAME                      CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                    1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver   762m         426Mi           
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           306Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      15m          513Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      16m          626Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:33:14Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      0m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     862m         711Mi           
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   228m         451Mi           
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             4m           307Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           220Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      15m          512Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      18m          627Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           296Mi           
+
+# timestamp=2026-05-18T15:33:25Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     147m         727Mi           
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   228m         451Mi           
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           307Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      15m          512Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      16m          627Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:33:35Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     147m         727Mi           
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   228m         451Mi           
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           307Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      15m          512Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      16m          627Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:33:45Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     704m         883Mi           
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   510m         926Mi           
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           307Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      19m          513Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      23m          627Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:33:55Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     365m         1088Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   994m         1545Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           308Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              4m           222Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      20m          512Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      39m          627Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   3m           295Mi           
+
+# timestamp=2026-05-18T15:34:06Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     365m         1088Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   994m         1545Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           308Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              4m           222Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      20m          512Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      39m          627Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   3m           295Mi           
+
+# timestamp=2026-05-18T15:34:16Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     426m         1150Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   535m         2260Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           308Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              3m           222Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      38m          516Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      16m          624Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:34:26Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     244m         1170Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   344m         2267Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             6m           310Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      16m          516Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      17m          624Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   16m          296Mi           
+
+# timestamp=2026-05-18T15:34:36Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     244m         1170Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   344m         2267Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             6m           310Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      16m          516Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      17m          624Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   16m          296Mi           
+
+# timestamp=2026-05-18T15:34:46Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     190m         1179Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   190m         2288Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           310Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      17m          516Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      19m          624Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           296Mi           
+
+# timestamp=2026-05-18T15:34:57Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     194m         1198Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   243m         2300Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             4m           311Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              3m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      17m          516Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      18m          624Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:35:07Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     194m         1198Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   243m         2300Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             4m           311Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              3m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      17m          516Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      18m          624Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:35:17Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     194m         1198Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   296m         2361Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           394Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             4m           311Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           220Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      23m          516Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      15m          624Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   3m           295Mi           
+
+# timestamp=2026-05-18T15:35:27Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     339m         1248Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   454m         2572Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   15m          395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             4m           311Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      23m          518Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      16m          624Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   3m           295Mi           
+
+# timestamp=2026-05-18T15:35:38Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     276m         1279Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   278m         2604Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             6m           320Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      20m          522Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      16m          625Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:35:48Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     276m         1279Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   278m         2604Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             6m           320Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           221Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      20m          522Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      16m          625Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:35:58Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     152m         1282Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   191m         2617Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             2m           319Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              19m          224Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      20m          526Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      20m          625Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:36:08Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     152m         1282Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   268m         2621Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             2m           319Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           224Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      18m          527Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      17m          626Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:36:19Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     152m         1282Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   268m         2621Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             2m           319Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           224Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      18m          527Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      17m          626Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:36:29Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     154m         1292Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   161m         2626Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   3m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           320Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              3m           224Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      32m          527Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      18m          625Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           295Mi           
+
+# timestamp=2026-05-18T15:36:39Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     181m         1295Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   209m         2634Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           320Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           224Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      28m          528Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      37m          625Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   19m          296Mi           
+
+# timestamp=2026-05-18T15:36:49Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     181m         1295Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   209m         2634Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             3m           320Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           224Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      28m          528Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      37m          625Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   19m          296Mi           
+
+# timestamp=2026-05-18T15:37:00Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     249m         1305Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   331m         2649Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             6m           320Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           225Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      41m          524Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      19m          626Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           296Mi           
+
+# timestamp=2026-05-18T15:37:10Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     174m         1307Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   331m         2649Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             2m           320Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           224Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      23m          524Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      17m          626Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   3m           296Mi           
+
+# timestamp=2026-05-18T15:37:20Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     174m         1307Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   331m         2649Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             2m           320Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           224Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      23m          524Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      17m          626Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   3m           296Mi           
+
+# timestamp=2026-05-18T15:37:30Z
+POD                                                  NAME                        CPU(cores)   MEMORY(bytes)   
+nyc-taxi-replay-bench-low-20260518t153226z-tckpz     replay                      1m           1947Mi          
+nyc-taxi-started-to-bronze-3bd98c9e3bb79a5f-driver   spark-kubernetes-driver     129m         1310Mi          
+streamingtobronze-ca2c279e3bb7be72-exec-1            spark-kubernetes-executor   148m         2661Mi          
+POD                                                 NAME                       CPU(cores)   MEMORY(bytes)   
+kafka-ui-5d564674c-rwdqw                            kafka-ui                   1m           395Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   topic-operator             2m           320Mi           
+my-kafka-cluster-entity-operator-665bf8ddb8-p478d   user-operator              2m           224Mi           
+my-kafka-cluster-kafka-node-0                       kafka                      29m          525Mi           
+my-kafka-cluster-kafka-node-1                       kafka                      17m          626Mi           
+strimzi-cluster-operator-57856f5f9b-nm84v           strimzi-cluster-operator   2m           296Mi           

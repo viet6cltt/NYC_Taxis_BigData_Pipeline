@@ -1,0 +1,4 @@
+scenario,speed_multiplier,max_offsets_per_trigger,events_per_sec,rows_per_batch,avg_batch_duration_ms,p95_batch_duration_ms,processed_rows_per_sec,microbatches,notes
+low,5,500,0.28,54.0,11502.14,29352.0,2.21,7,logs=/home/viet-k3s-google/NYC_Taxis_BigData_Pipeline/benchmark_results/streaming_20260518T154052Z/low
+medium,50,2000,41.72,573.86,11008.14,28099.0,83.85,7,logs=/home/viet-k3s-google/NYC_Taxis_BigData_Pipeline/benchmark_results/streaming_20260518T154052Z/medium
+high,500,10000,278.89,4907.43,11628.0,29995.0,507.43,7,logs=/home/viet-k3s-google/NYC_Taxis_BigData_Pipeline/benchmark_results/streaming_20260518T154052Z/high

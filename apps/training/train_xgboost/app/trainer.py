@@ -7,7 +7,8 @@ Steps:
   2. Assemble Spark ML feature vectors
   3. Train XGBoost with xgboost.spark
   4. Log params, metrics, feature importance, model to MLflow
-  5. Register & auto-promote to Production if R² >= threshold
+  5. Register model in MLflow
+  6. Optionally auto-promote for manual runs
 """
 
 import pandas as pd
@@ -31,6 +32,8 @@ from app.config import (
     XGB_PARAMS,
     XGB_NUM_WORKERS,
     PROMOTE_THRESHOLD_R2,
+    AUTO_PROMOTE,
+    MLFLOW_RUN_TAGS,
 )
 
 
@@ -70,7 +73,8 @@ def _get_sklearn_model(spark_model):
 def train_and_log(gold_df: DataFrame) -> None:
     """
     Train XGBoost model on the Gold dataset and log everything to MLflow.
-    Auto-promotes model to 'Production' stage if test R² ≥ threshold.
+    Airflow retrain runs set AUTO_PROMOTE=false so the DAG can evaluate the
+    candidate against the current Production model before promotion.
     """
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
@@ -103,6 +107,9 @@ def train_and_log(gold_df: DataFrame) -> None:
     # 2. MLflow run
     # -------------------------------------------------------------------
     with mlflow.start_run(run_name="XGBoost") as run:
+        if MLFLOW_RUN_TAGS:
+            mlflow.set_tags(MLFLOW_RUN_TAGS)
+
         # Params
         mlflow.log_param("model_type",  "XGBoost")
         mlflow.log_param("n_features",  len(FEATURE_COLS))
@@ -146,7 +153,6 @@ def train_and_log(gold_df: DataFrame) -> None:
         train_metrics = _compute_metrics(train_predictions)
         test_metrics = _compute_metrics(test_predictions)
 
-        mlflow.log_metric("train_r2",   train_metrics["r2"])
         mlflow.log_metric("train_r2",   train_metrics["r2"])
         mlflow.log_metric("train_rmse", train_metrics["rmse"])
         mlflow.log_metric("train_mae",  train_metrics["mae"])
@@ -199,8 +205,12 @@ def train_and_log(gold_df: DataFrame) -> None:
     test_df.unpersist()
     dataset.unpersist()
 
+    if not AUTO_PROMOTE:
+        print("[train_xgboost] AUTO_PROMOTE=false; candidate remains unpromoted for Airflow gate.")
+        return
+
     # -------------------------------------------------------------------
-    # 6. Auto-promote to Production if R² meets threshold
+    # 6. Auto-promote to Production if R² meets threshold for manual runs
     # -------------------------------------------------------------------
     if test_metrics["r2"] >= PROMOTE_THRESHOLD_R2:
         client = mlflow.tracking.MlflowClient()

@@ -1,0 +1,48 @@
+
+# timestamp=2026-05-18T15:40:59Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "32039147578ea031bfa60e6b974d52e1afc12f0aabdc5bad98fbbe0e8565e002": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:41:09Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "2558ebc08d71f809cc4f9d7ec372b511001b31f835ff71bc802c7003fef61052": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:41:19Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "eeba504043d96f4fc4d7f5fe810f00ee721a20bcf5633fb34d50db4d4d347d4e": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:41:30Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "6990f2cd36c2e6faba05d3457681a17ad49d75bd17155100a5e4768eb8a808bb": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:41:40Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "a9e12272f599b63f913da7ceafd90b9be92b6001d6e2c94d9365b40825652c4f": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:41:50Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "d09dfd0fd313dbde8b30cff62c47c56337c16dbd0d1f7a3445f3d356ad702682": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:42:00Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "5bfb965b8e62e258d7856d2a1ec22cb98e64d363a1bffb61648f4f67e01fc04c": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:42:10Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "f8ddedfc322a86a6aef8a59b5003e7caf81350bb496a7633b986b45d4a84c1a3": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:42:20Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "00454f0748c83821163e675028c97ca0bb4b6c3ef9415b785b1f973fa89a4afe": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:42:31Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "f59812641f3469bbc06a890528c4c9adc70939552004e225ed8ab23a848b1a8e": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:42:41Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "39b791f91d20ac031d90494ef04e5b89ad32399f17bf5e72f4e2b2305fb7516a": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory
+
+# timestamp=2026-05-18T15:42:51Z group=nyc-taxi-bench-low-20260518T154052Z-started pod=my-kafka-cluster-entity-operator-665bf8ddb8-p478d
+Defaulted container "topic-operator" out of: topic-operator, user-operator
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "45a253b36f4d184358f128daacd094b7c534b4f307687bf563d781f5f1f1fc37": OCI runtime exec failed: exec failed: unable to start container process: exec: "/opt/kafka/bin/kafka-consumer-groups.sh": stat /opt/kafka/bin/kafka-consumer-groups.sh: no such file or directory

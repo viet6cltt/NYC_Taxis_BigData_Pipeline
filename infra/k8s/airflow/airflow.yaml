@@ -35,18 +35,48 @@ spec:
               value: "10.148.0.2:5000"
             - name: NYC_TAXI_IMAGE_TAG
               value: "v1.0"
+            - name: NYC_TAXI_FEATURE_IMAGE
+              value: "10.148.0.2:5000/nyc-taxi-feature-engineering:v1.0"
+            - name: NYC_TAXI_TRAIN_IMAGE
+              value: "10.148.0.2:5000/nyc-taxi-train-xgboost:v1.0"
             - name: NYC_TAXI_SPARK_NAMESPACE
               value: "lakehouse"
             - name: NYC_TAXI_SPARK_SERVICE_ACCOUNT
               value: "spark-user"
             - name: NYC_TAXI_SPARK_IMAGE_PULL_POLICY
               value: "Always"
+            - name: NYC_TAXI_SPARK_DRIVER_DELETE_ON_TERMINATION
+              value: "true"
+            - name: NYC_TAXI_SPARK_EXECUTOR_DELETE_ON_TERMINATION
+              value: "true"
             - name: NYC_TAXI_MINIO_ENDPOINT
               value: "http://minio-api.storage.svc.cluster.local:9000"
             - name: NYC_TAXI_MINIO_ACCESS_KEY
               value: "minioadmin"
             - name: NYC_TAXI_MINIO_SECRET_KEY
               value: "minioadmin"
+            - name: NYC_TAXI_MLFLOW_TRACKING_URI
+              value: "http://mlflow.mlops.svc.cluster.local:5000"
+            - name: NYC_TAXI_MLFLOW_S3_ENDPOINT_URL
+              value: "http://minio-api.storage.svc.cluster.local:9000"
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: "http://minio-api.storage.svc.cluster.local:9000"
+            - name: AWS_ACCESS_KEY_ID
+              value: "minioadmin"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "minioadmin"
+            - name: NYC_TAXI_EXPERIMENT_NAME
+              value: "NYC_Taxi_Fare_Prediction"
+            - name: NYC_TAXI_MODEL_NAME
+              value: "XGB_NYC_Fare"
+            - name: NYC_TAXI_MIN_TEST_ROWS
+              value: "10000"
+            - name: NYC_TAXI_MAX_R2_DROP
+              value: "0.03"
+            - name: NYC_TAXI_MAX_RMSE_RATIO
+              value: "1.05"
+            - name: NYC_TAXI_MAX_TRAIN_TEST_R2_GAP
+              value: "0.12"
             - name: NYC_TAXI_LIFECYCLE_OVERLAP_MINUTES
               value: "10"
             - name: NYC_TAXI_LIFECYCLE_TTL_HOURS

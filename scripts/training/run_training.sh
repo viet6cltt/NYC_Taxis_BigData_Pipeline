@@ -36,19 +36,18 @@ SPLIT_STRATEGY="${SPLIT_STRATEGY:-random}"
 TIME_SPLIT_MONTH="${TIME_SPLIT_MONTH:-2024-11}"
 
 IMAGE_PULL_POLICY="${IMAGE_PULL_POLICY:-Always}"
-SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-2g}"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
 SPARK_DRIVER_MEMORY_OVERHEAD="${SPARK_DRIVER_MEMORY_OVERHEAD:-1g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
 SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-2}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-8g}"
-SPARK_EXECUTOR_MEMORY_OVERHEAD="${SPARK_EXECUTOR_MEMORY_OVERHEAD:-10g}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-7g}"
 SPARK_EXECUTOR_DELETE_ON_TERMINATION="${SPARK_EXECUTOR_DELETE_ON_TERMINATION:-false}"
 
 echo "--- Submitting XGBoost Training job to Kubernetes ---"
 echo "    MLflow Tracking URI: $MLFLOW_TRACKING_URI"
 echo "    XGBoost Spark workers: $XGB_NUM_WORKERS"
 echo "    Split strategy: $SPLIT_STRATEGY"
-echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES} cores, ${SPARK_EXECUTOR_MEMORY} + ${SPARK_EXECUTOR_MEMORY_OVERHEAD} overhead"
+echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES} cores, ${SPARK_EXECUTOR_MEMORY}"
 
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
@@ -92,9 +91,9 @@ echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES}
     --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
     --conf spark.executor.cores="$SPARK_EXECUTOR_CORES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
-    --conf spark.executor.memoryOverhead="$SPARK_EXECUTOR_MEMORY_OVERHEAD" \
     --conf spark.kubernetes.executor.request.cores="$SPARK_EXECUTOR_CORES" \
     --conf spark.kubernetes.executor.limit.cores="$SPARK_EXECUTOR_CORES" \
+    --conf spark.kubernetes.executor.node.selector.workload=spark \
     --conf spark.memory.fraction=0.8 \
     \
     "$APP_FILE"
