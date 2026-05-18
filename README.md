@@ -1,163 +1,190 @@
 # NYC Taxis BigData Pipeline
 
-## Project Overview
-The **NYC Taxis BigData Pipeline** is a comprehensive, scalable data engineering + MLOps project that processes New York City Taxi trip data through a **4-Layer Medallion Architecture** (Bronze → Silver → Gold → ML Serving). It supports both **Batch** and **Streaming** ingestion, end-to-end ML training with experiment tracking, and real-time fare prediction — all deployed on Kubernetes.
-
-## Full Architecture
-
-```
-                         ┌─────────────────────────────────────────────────────┐
-                         │                 INGESTION LAYER                      │
-  Parquet files ────────►│  Spark Batch Job (historical_to_bronze)             │
-                         │                                    ┌─── Bronze ─────┐│
-  NYC TLC data ─────────►│  Replay Producer → Kafka           │  Delta Lake    ││
-  (simulated)            │  → Spark Streaming (kafka_to_bronze)│  (MinIO)      ││
-                         └────────────────────────────────────┴─────────────────┘
-                                              │
-                         ┌────────────────────▼──────────────────────────────── ┐
-                         │              PROCESSING LAYER                          │
-                         │  bronze_to_silver: clean, filter, feature derive       │
-                         └────────────────────┬──────────────────────────────────┘
-                                              │ Silver Delta Lake
-              ┌───────────────────────────────┴──────────────────────────────────┐
-              │                       ML PIPELINE                                  │
-              │                                                                     │
-              │  [TRAINING — Batch/Scheduled]      [SERVING — Always-on]           │
-              │                                                                     │
-              │  feature_engineering               Silver trip_started stream       │
-              │  route_estimates + features               ↓                        │
-              │        ↓                           stream_predict                  │
-              │  train_xgboost                     route lookup + XGBoost          │
-              │  XGBoost + MLflow                         ↓                        │
-              │        ↓                           Gold/predictions (Delta)         │
-              │  MLflow Model Registry ──────────►        ↓                        │
-              │                                    FastAPI  POST /predict           │
-              └──────────────────────────────────────────────────────────────────── ┘
-```
-
-## Medallion Layers
-
-| Layer | MinIO Path | Description |
-|---|---|---|
-| **Bronze** | `s3a://lakehouse/bronze/nyc-taxi/*` | Raw started/completed events, Avro-decoded |
-| **Silver** | `s3a://lakehouse/silver/nyc-taxi/*` | Clean started/completed tables + lifecycle state |
-| **Gold (Features)** | `s3a://lakehouse/gold/ml/features` | Training features with estimated distance/duration |
-| **Gold (Predictions)** | `s3a://lakehouse/gold/ml/predictions` | Real-time XGBoost prediction log + feature snapshot |
-
-## Technology Stack
-
-| Category | Technology |
-|---|---|
-| Data Processing | Apache Spark (PySpark), Delta Lake |
-| Streaming Broker | Apache Kafka |
-| Data Serialization | Avro |
-| Object Storage | MinIO (S3-compatible) |
-| ML Framework | XGBoost, scikit-learn |
-| ML Tracking | MLflow (Experiments + Model Registry) |
-| Serving API | FastAPI + Uvicorn |
-| Orchestration | Kubernetes (K8s), Spark-on-K8s, Airflow |
-| Language | Python 3.11 |
-
-## Directory Structure
+A streaming lakehouse project for NYC taxi data that combines **data engineering, MLOps, realtime inference, and BI** on top of a 4-layer medallion architecture:
 
 ```text
-NYC_Taxis_BigData_Pipeline/
-├── apps/
-│   ├── ingestion/
-│   │   ├── batch/historical_to_bronze/    # Spark batch: parquet → Bronze
-│   │   ├── common/                        # Shared contracts and normalizers
-│   │   └── streaming/
-│   │       ├── kafka_to_bronze/           # Spark Streaming: Kafka → Bronze
-│   │       ├── replay_producer/           # Simulates live NYC taxi events
-│   │       └── schemas/                   # Avro schemas (taxi_trip_event.avsc)
-│   ├── processing/
-│   │   └── bronze_to_silver/             # Spark job: Bronze → Silver
-│   ├── training/
-│   │   ├── feature_engineering/          # Spark batch: Silver → Gold features
-│   │   └── train_xgboost/               # Train XGBoost + register in MLflow
-│   ├── orchestration/
-│   │   └── airflow/                     # Airflow DAGs for scheduled jobs
-│   └── serving/
-│       ├── stream_predict/               # Spark Streaming: Silver started → XGBoost → Gold
-│       └── fastapi/                      # FastAPI REST API: POST /predict
-├── infra/k8s/
-│   ├── airflow/                          # Airflow standalone demo deployment
-│   ├── common/                           # Namespaces, RBAC, NFS PV/PVCs
-│   ├── ingestion/                        # Kafka cluster, topics, UI
-│   ├── minio/                            # MinIO object storage
-│   ├── mlflow/                           # MLflow Tracking Server
-│   ├── serving/                          # FastAPI + stream_predict deployments
-│   └── spark/                            # Spark History Server / UI
-└── scripts/
-    ├── images/                           # Docker build scripts (ingestion/training/serving)
-    ├── ingestion/                        # Run batch + streaming ingestion
-    ├── processing/                       # Run Bronze → Silver
-    ├── training/                         # Run feature engineering + training
-    └── serving/                          # Run streaming inference
+Bronze -> Silver -> Gold -> Serving / Monitoring / BI
 ```
 
-## How to Run
+The pipeline supports:
 
-### 1. Build Docker Images
-```bash
-bash scripts/images/build.sh           # Ingestion images
-bash scripts/images/build_batch.sh     # Batch ingestion image
-bash scripts/images/build_training.sh  # Training images (new)
-bash scripts/images/build_serving.sh   # Serving images (new)
-bash scripts/images/build_airflow.sh   # Airflow DAG image
+- historical batch ingestion for model training
+- realtime Kafka ingestion for `trip_started` and `trip_completed` events
+- Delta Lake tables on MinIO
+- XGBoost training with MLflow tracking + registry
+- realtime fare prediction with Spark Streaming
+- REST serving through FastAPI and BentoML
+- model-quality monitoring tables
+- BI dashboards through Trino + Superset
+
+## Architecture
+
+```text
+                         +---------------- INGESTION ----------------+
+Historical parquet ----> Spark batch -------------------------------> Bronze trip_completed
+Realtime replay -------> Kafka -> Spark streaming ------------------> Bronze trip_started / trip_completed
+                         +-------------------------------------------+
+                                              |
+                                              v
+                         +---------------- PROCESSING ---------------+
+                         | Bronze -> Silver cleaning + lifecycle     |
+                         +-------------------------------------------+
+                                              |
+                         +--------------------+----------------------+
+                         |                                           |
+                         v                                           v
+              Gold route estimates                         Silver realtime stream
+                         |                                           |
+                         v                                           v
+              Gold training features                    Spark stream_predict
+                         |                              + route lookup + model
+                         v                                           |
+              XGBoost training + MLflow Registry                    v
+                         |                              Gold predictions
+                         +--------------------+----------------------+
+                                              |
+                   +--------------------------+--------------------------+
+                   |                         |                          |
+                   v                         v                          v
+              FastAPI / BentoML      prediction_actuals       Trino + Superset BI
+                                             |
+                                             v
+                                  model_quality_daily
 ```
 
-### 2. Infrastructure Setup
-```bash
-kubectl apply -f infra/k8s/common/
-kubectl apply -f infra/k8s/minio/
-kubectl apply -f infra/k8s/ingestion/kafka/
-kubectl apply -f infra/k8s/mlflow/          # MLflow Tracking Server
+## Lakehouse Tables
+
+| Layer | Path | Purpose |
+|---|---|---|
+| Bronze | `s3a://lakehouse/bronze/nyc-taxi/trip_started` | Raw realtime start events |
+| Bronze | `s3a://lakehouse/bronze/nyc-taxi/trip_completed` | Raw completed events from batch + streaming |
+| Silver | `s3a://lakehouse/silver/nyc-taxi/trip_started` | Clean started trips |
+| Silver | `s3a://lakehouse/silver/nyc-taxi/trip_completed` | Clean completed trips |
+| Silver | `s3a://lakehouse/silver/nyc-taxi/trip_lifecycle` | Joined trip lifecycle / business truth |
+| Gold | `s3a://lakehouse/gold/ml/route_estimates` | Historical route priors for inference |
+| Gold | `s3a://lakehouse/gold/ml/features` | Training features |
+| Gold | `s3a://lakehouse/gold/ml/predictions` | Realtime prediction log |
+| Gold | `s3a://lakehouse/gold/ml/prediction_actuals` | Prediction vs actual labels |
+| Gold | `s3a://lakehouse/gold/monitoring/model_quality_daily` | Daily model-quality metrics |
+
+## Stack
+
+| Area | Technology |
+|---|---|
+| Processing | Apache Spark, PySpark, Delta Lake |
+| Streaming | Apache Kafka, Avro |
+| Storage | MinIO |
+| ML | XGBoost, scikit-learn, MLflow |
+| Serving | FastAPI, BentoML |
+| Orchestration | Kubernetes, Spark-on-Kubernetes, Airflow |
+| BI | Hive Metastore, Trino, Superset |
+| Language | Python 3.11 |
+
+## Repository Layout
+
+```text
+apps/
+  ingestion/        batch + streaming producers/consumers
+  processing/       bronze_to_silver jobs
+  training/         feature engineering + XGBoost training
+  serving/          stream_predict, FastAPI, BentoML
+  orchestration/    Airflow DAGs
+infra/k8s/          MinIO, Kafka, MLflow, Airflow, serving, Spark manifests
+scripts/
+  ingestion/        ingestion runners
+  processing/       Silver + lifecycle runners
+  training/         feature engineering + training runners
+  serving/          streaming inference + local BentoML
+  bi/               Trino/Superset setup and dashboard creation
 ```
 
-### 3. Run Ingestion Jobs
+## Quick Run Order
+
+For the exact operational sequence, use [RUN_FLOW.md](RUN_FLOW.md). The short path is:
+
+### 1. Build images
+
 ```bash
-bash scripts/ingestion/run_batch.sh        # Historical parquet → Bronze
-bash scripts/ingestion/run_streaming.sh    # Kafka → Bronze (always-on)
+bash scripts/images/build.sh all
+bash scripts/images/build_training.sh
+bash scripts/images/build_serving.sh
+bash scripts/images/build_airflow.sh
 ```
 
-### 4. Run Processing (Bronze → Silver)
+### 2. Prepare infrastructure
+
 ```bash
-bash scripts/processing/run_silver.sh
+kubectl apply -f infra/k8s/minio/minio.yaml
+kubectl apply -f infra/k8s/common/spark-rabc.yaml
+
+kubectl create namespace kafka --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka
+kubectl apply -f infra/k8s/ingestion/kafka/kafka-cluster.yaml
+kubectl apply -f infra/k8s/ingestion/kafka/kafka-topics.yaml
+kubectl apply -f infra/k8s/mlflow/mlflow.yaml
 ```
 
-### 5. Run ML Training Pipeline
+### 3. Historical path for training
+
 ```bash
-# Build route estimates and training features
+bash scripts/ingestion/run_batch.sh
+bash scripts/processing/run_silver.sh completed batch
 bash scripts/training/run_feature_engineering.sh route_estimates
 bash scripts/training/run_feature_engineering.sh features
-
-# Train XGBoost + register in MLflow Registry
 bash scripts/training/run_training.sh
 ```
 
-### 6. Run ML Serving Pipeline
-```bash
-# Deploy FastAPI prediction server
-kubectl apply -f infra/k8s/serving/fastapi_deployment.yaml
+### 4. Realtime path
 
-# Start Spark Streaming inference (Silver started → route lookup → Gold predictions)
+```bash
+bash scripts/ingestion/run_streaming.sh all
+bash scripts/processing/run_silver.sh started streaming
+bash scripts/processing/run_silver.sh completed streaming
 bash scripts/serving/run_stream_predict.sh
 ```
 
-### 6.1 Run Airflow Lifecycle Merge
+### 5. Monitoring path
+
+```bash
+bash scripts/training/run_feature_engineering.sh prediction_actuals
+bash scripts/training/run_feature_engineering.sh model_quality_daily
+```
+
+### 6. Serving APIs
+
+```bash
+kubectl apply -f infra/k8s/serving/fastapi_deployment.yaml
+kubectl apply -f infra/k8s/serving/bentoml_deployment.yaml
+```
+
+### 7. Airflow lifecycle merge
+
 ```bash
 kubectl apply -f infra/k8s/airflow/airflow.yaml
 kubectl port-forward -n lakehouse svc/nyc-taxi-airflow 8081:8080
 ```
 
-Airflow UI: `http://localhost:8081` (`admin` / `admin`).
+- UI: `http://localhost:8081`
+- Login: `admin / admin`
+- Main DAG: `nyc_taxi_lifecycle_merge`
 
-Main DAG: `nyc_taxi_lifecycle_merge`.
+### 8. BI stack
 
-### 7. Call the Prediction API
 ```bash
-curl -X POST http://<fastapi-service>:8000/predict \
+bash scripts/bi/setup_bi.sh
+kubectl port-forward -n lakehouse svc/superset 8088:8088
+kubectl port-forward -n lakehouse svc/trino 8080:8080
+python3 scripts/bi/create_dashboard.py
+```
+
+See [BI_GUIDE.md](BI_GUIDE.md) for dashboard scope and local preview instructions.
+
+## Prediction API Example
+
+The API uses **estimated** distance and duration because inference happens at `trip_started`, before actual trip outcomes exist.
+
+```bash
+curl -X POST http://<service-host>:8000/predict \
   -H "Content-Type: application/json" \
   -d '{
     "passenger_count": 2,
@@ -170,26 +197,33 @@ curl -X POST http://<fastapi-service>:8000/predict \
   }'
 ```
 
-## ML Model Details
+## Model Notes
 
-- **Target**: `fare_amount` (USD)
-- **Algorithm**: XGBoost Regressor (`n_estimators=100`, `max_depth=6`, `lr=0.1`)
-- **Features** (14):
-  - Temporal: `pickup_hour`, `pickup_day_of_week`, `is_weekend`
-  - Cyclical: `hour_sin`, `hour_cos`, `day_sin`, `day_cos`
-  - Trip metrics: `passenger_count`, `estimated_trip_distance`, `estimated_trip_duration_seconds`, `estimated_speed`
-  - Geo: `distance_manhattan`, `location_cluster`, `temporal_cluster`
-- **Tracking**: MLflow — all runs, metrics, artifacts, and model versions logged
-- **Auto-promotion**: Model is promoted to `Production` stage when Test R² ≥ 0.70
+- target: `fare_amount`
+- algorithm: XGBoost regressor
+- registered model: `XGB_NYC_Fare`
+- production stage: promoted when test `R² >= 0.70`
+- feature families:
+  - temporal + cyclical time features
+  - passenger count
+  - estimated distance, duration, speed
+  - Manhattan distance and route/time clusters
 
-## Configuration
+## Core Configuration
 
-| Variable | Default | Description |
+| Variable | Default | Meaning |
 |---|---|---|
-| `MINIO_ENDPOINT` | `http://minio-api.storage.svc.cluster.local:9000` | MinIO S3 endpoint |
+| `MINIO_ENDPOINT` | `http://minio-api.storage.svc.cluster.local:9000` | MinIO endpoint |
 | `MLFLOW_TRACKING_URI` | `http://mlflow.mlflow.svc.cluster.local:5000` | MLflow server |
-| `MODEL_NAME` | `XGB_NYC_Fare` | Registered model name |
-| `MODEL_STAGE` | `Production` | MLflow model stage to serve |
-| `KAFKA_BOOTSTRAP_SERVERS` | `kafka-cluster-...:9092` | Kafka broker address |
+| `MODEL_NAME` | `XGB_NYC_Fare` | registered model name |
+| `MODEL_STAGE` | `Production` | model stage served by inference |
+| `KAFKA_BOOTSTRAP_SERVERS` | cluster-specific | Kafka brokers |
 
-All configs are also manageable via `.env` file in the repository root.
+Root-level `.env` can be used to override local defaults.
+
+## Companion Docs
+
+- [RUN_FLOW.md](RUN_FLOW.md) — full end-to-end execution order
+- [RUN_GUIDE.md](RUN_GUIDE.md) — compact deployment guide
+- [BI_GUIDE.md](BI_GUIDE.md) — Trino/Superset architecture and dashboards
+- [SETUP_K3S.md](SETUP_K3S.md) — cluster setup notes
