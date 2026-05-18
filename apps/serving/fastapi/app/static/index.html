@@ -110,22 +110,6 @@
                 </label>
 
                 <label class="field">
-                  <span>Distance</span>
-                  <div class="input-unit">
-                    <input id="estimated_trip_distance" name="estimated_trip_distance" type="number" min="0.1" step="0.1" value="3.5" required />
-                    <span>mi</span>
-                  </div>
-                </label>
-
-                <label class="field">
-                  <span>Duration</span>
-                  <div class="input-unit">
-                    <input id="duration_minutes" name="duration_minutes" type="number" min="1" step="1" value="15" required />
-                    <span>min</span>
-                  </div>
-                </label>
-
-                <label class="field">
                   <span>Pickup hour</span>
                   <div class="range-field">
                     <input id="pickup_hour" name="pickup_hour" type="range" min="0" max="23" step="1" value="14" />
@@ -146,6 +130,8 @@
                   </select>
                 </label>
               </div>
+              <input id="estimated_trip_distance" name="estimated_trip_distance" type="hidden" value="3.5" />
+              <input id="duration_minutes" name="duration_minutes" type="hidden" value="15" />
 
               <div class="route-fields">
                 <label class="field">
@@ -161,6 +147,29 @@
                   <span>Dropoff zone</span>
                   <select id="dolocation_id" name="dolocation_id"></select>
                 </label>
+              </div>
+
+              <div class="location-picker">
+                <div class="location-picker-toolbar">
+                  <div class="segmented-control" aria-label="Map selection target">
+                    <button class="active" id="map-mode-pickup" type="button">Pickup</button>
+                    <button id="map-mode-dropoff" type="button">Dropoff</button>
+                  </div>
+                  <div class="route-estimate-readout">
+                    <span>Route estimate</span>
+                    <strong id="route-estimate-readout">3.5 mi / 15 min</strong>
+                  </div>
+                  <div class="selected-route">
+                    <span>PU</span>
+                    <strong id="selected-pickup-zone">Midtown Center</strong>
+                    <span>DO</span>
+                    <strong id="selected-dropoff-zone">Upper East Side North</strong>
+                  </div>
+                </div>
+                <div class="taxi-zone-map-wrap">
+                  <svg id="taxi-zone-map" class="taxi-zone-map" viewBox="0 0 920 620" role="img" aria-label="NYC taxi zone selector"></svg>
+                  <div class="map-empty" id="map-empty">Loading NYC taxi zone map</div>
+                </div>
               </div>
 
               <div class="form-actions">

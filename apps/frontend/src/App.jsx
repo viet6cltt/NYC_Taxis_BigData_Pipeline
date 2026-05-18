@@ -22,6 +22,19 @@ import {
 
 const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const mapWidth = 920;
+const mapHeight = 620;
+const mapPadding = 24;
+const routeDistanceMultiplier = 1.35;
+const routeAverageSpeedMph = 13.5;
+const boroughColors = {
+  Bronx: "#dbeafe",
+  Brooklyn: "#dcfce7",
+  EWR: "#f1f5f9",
+  Manhattan: "#fef3c7",
+  Queens: "#ede9fe",
+  "Staten Island": "#fee2e2",
+};
 
 const initialTrip = {
   passenger_count: 2,
@@ -262,6 +275,185 @@ function computeQuality(records) {
   };
 }
 
+function featureLocationId(feature) {
+  return Number(feature?.properties?.locationid || feature?.properties?.LocationID || feature?.properties?.id);
+}
+
+function getGeometryRings(geometry) {
+  if (!geometry) return [];
+  if (geometry.type === "Polygon") return geometry.coordinates;
+  if (geometry.type === "MultiPolygon") return geometry.coordinates.flat();
+  return [];
+}
+
+function coordinateBounds(features) {
+  const bounds = {
+    minLon: Infinity,
+    maxLon: -Infinity,
+    minLat: Infinity,
+    maxLat: -Infinity,
+  };
+
+  for (const feature of features) {
+    for (const ring of getGeometryRings(feature.geometry)) {
+      for (const [lon, lat] of ring) {
+        bounds.minLon = Math.min(bounds.minLon, lon);
+        bounds.maxLon = Math.max(bounds.maxLon, lon);
+        bounds.minLat = Math.min(bounds.minLat, lat);
+        bounds.maxLat = Math.max(bounds.maxLat, lat);
+      }
+    }
+  }
+
+  return bounds;
+}
+
+function createMapProjector(features) {
+  const bounds = coordinateBounds(features);
+  const lonRange = bounds.maxLon - bounds.minLon || 1;
+  const latRange = bounds.maxLat - bounds.minLat || 1;
+  const scale = Math.min((mapWidth - mapPadding * 2) / lonRange, (mapHeight - mapPadding * 2) / latRange);
+  const renderedWidth = lonRange * scale;
+  const renderedHeight = latRange * scale;
+  const offsetX = (mapWidth - renderedWidth) / 2;
+  const offsetY = (mapHeight - renderedHeight) / 2;
+
+  return ([lon, lat]) => [
+    offsetX + (lon - bounds.minLon) * scale,
+    offsetY + (bounds.maxLat - lat) * scale,
+  ];
+}
+
+function ringToPath(ring, project) {
+  return ring
+    .map((point, index) => {
+      const [x, y] = project(point);
+      return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
+
+function featureToPath(feature, project) {
+  return `${getGeometryRings(feature.geometry).map((ring) => ringToPath(ring, project)).join(" Z ")} Z`;
+}
+
+function featureCenter(feature, project) {
+  const points = getGeometryRings(feature?.geometry).flat();
+  if (points.length === 0) return null;
+
+  const totals = points.reduce(
+    (sum, [lon, lat]) => ({ lon: sum.lon + lon, lat: sum.lat + lat }),
+    { lon: 0, lat: 0 },
+  );
+  return project([totals.lon / points.length, totals.lat / points.length]);
+}
+
+function featureGeoCenter(feature) {
+  const points = getGeometryRings(feature?.geometry).flat();
+  if (points.length === 0) return null;
+
+  const totals = points.reduce(
+    (sum, [lon, lat]) => ({ lon: sum.lon + lon, lat: sum.lat + lat }),
+    { lon: 0, lat: 0 },
+  );
+  return [totals.lon / points.length, totals.lat / points.length];
+}
+
+function haversineMiles(start, end) {
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const earthRadiusMiles = 3958.8;
+  const [lon1, lat1] = start;
+  const [lon2, lat2] = end;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
+  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function estimateFromZoneGeometry(features, pickupId, dropoffId) {
+  const pickup = featureGeoCenter(features.find((feature) => featureLocationId(feature) === Number(pickupId)));
+  const dropoff = featureGeoCenter(features.find((feature) => featureLocationId(feature) === Number(dropoffId)));
+  if (!pickup || !dropoff) return null;
+
+  const directDistance = haversineMiles(pickup, dropoff);
+  const estimatedDistance = Math.max(0.3, directDistance * routeDistanceMultiplier + 0.2);
+  const durationMinutes = Math.max(3, Math.round((estimatedDistance / routeAverageSpeedMph) * 60));
+
+  return {
+    distance: Number(estimatedDistance.toFixed(1)),
+    durationMinutes,
+  };
+}
+
+function TaxiZoneMap({ features, pickupId, dropoffId, activeEndpoint, onSelect }) {
+  const { paths, pickupPoint, dropoffPoint } = useMemo(() => {
+    if (!features.length) return { paths: [], pickupPoint: null, dropoffPoint: null };
+
+    const project = createMapProjector(features);
+    return {
+      paths: features.map((feature) => ({
+        feature,
+        id: featureLocationId(feature),
+        path: featureToPath(feature, project),
+        center: featureCenter(feature, project),
+      })),
+      pickupPoint: featureCenter(features.find((feature) => featureLocationId(feature) === Number(pickupId)), project),
+      dropoffPoint: featureCenter(features.find((feature) => featureLocationId(feature) === Number(dropoffId)), project),
+    };
+  }, [features, pickupId, dropoffId]);
+
+  if (!features.length) {
+    return <div className="map-empty">NYC taxi zone map loading</div>;
+  }
+
+  return (
+    <svg className="taxi-zone-map" viewBox={`0 0 ${mapWidth} ${mapHeight}`} role="img" aria-label="NYC taxi zone selector">
+      <rect className="map-water" x="0" y="0" width={mapWidth} height={mapHeight} />
+      {paths.map(({ feature, id, path }) => {
+        const selected = id === Number(pickupId) || id === Number(dropoffId);
+        const title = `${feature.properties.borough} - ${feature.properties.zone}`;
+        return (
+          <path
+            key={id}
+            className={`zone-shape ${selected ? "selected" : ""} ${id === Number(pickupId) ? "pickup" : ""} ${id === Number(dropoffId) ? "dropoff" : ""}`}
+            d={path}
+            fill={boroughColors[feature.properties.borough] || "#e2e8f0"}
+            onClick={() => onSelect(id)}
+            tabIndex="0"
+            role="button"
+            aria-label={`${activeEndpoint === "pickup" ? "Set pickup" : "Set dropoff"}: ${title}`}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelect(id);
+              }
+            }}
+          >
+            <title>{title}</title>
+          </path>
+        );
+      })}
+      {pickupPoint && dropoffPoint && (
+        <line className="map-route-line" x1={pickupPoint[0]} y1={pickupPoint[1]} x2={dropoffPoint[0]} y2={dropoffPoint[1]} />
+      )}
+      {pickupPoint && (
+        <g className="map-pin pickup" transform={`translate(${pickupPoint[0]} ${pickupPoint[1]})`}>
+          <circle r="11" />
+          <text y="4">PU</text>
+        </g>
+      )}
+      {dropoffPoint && (
+        <g className="map-pin dropoff" transform={`translate(${dropoffPoint[0]} ${dropoffPoint[1]})`}>
+          <circle r="11" />
+          <text y="4">DO</text>
+        </g>
+      )}
+    </svg>
+  );
+}
+
 function Sidebar({ page, setPage }) {
   return (
     <aside className="sidebar" aria-label="Workspace navigation">
@@ -305,6 +497,8 @@ function Sidebar({ page, setPage }) {
 
 function PricingPage() {
   const [zones, setZones] = useState([]);
+  const [mapFeatures, setMapFeatures] = useState([]);
+  const [activeEndpoint, setActiveEndpoint] = useState("pickup");
   const [health, setHealth] = useState({ status: "pending", model_name: "XGB_NYC_Fare", model_version: "unknown" });
   const [trip, setTrip] = useState(initialTrip);
   const [result, setResult] = useState(null);
@@ -322,16 +516,99 @@ function PricingPage() {
       .then((response) => response.json())
       .then((payload) => setZones(payload.zones || []))
       .catch(() => setZones([]));
+    fetch("/data/taxi_zones.geojson")
+      .then((response) => response.json())
+      .then((payload) => setMapFeatures(payload.features || []))
+      .catch(() => setMapFeatures([]));
     refreshHealth().catch(() => setHealth({ status: "offline", model_name: "XGB_NYC_Fare", model_version: "unknown" }));
   }, []);
 
   const zoneName = (id) => zones.find((zone) => Number(zone.id) === Number(id))?.zone || `Zone ${id}`;
+  const zoneLabel = (id) => zones.find((zone) => Number(zone.id) === Number(id))?.label || `Zone ${id}`;
   const speed = trip.estimated_trip_distance / (trip.duration_minutes / 60);
   const zoneDelta = Math.abs(Number(trip.dolocation_id) - Number(trip.pulocation_id));
+
+  useEffect(() => {
+    const pickupId = Number(trip.pulocation_id);
+    const dropoffId = Number(trip.dolocation_id);
+    const pickupHour = Number(trip.pickup_hour);
+    const pickupDay = Number(trip.pickup_day_of_week);
+
+    if (!pickupId || !dropoffId) return undefined;
+
+    const controller = new AbortController();
+
+    async function loadRouteEstimate() {
+      let estimate = null;
+      const params = new URLSearchParams({
+        pulocation_id: String(pickupId),
+        dolocation_id: String(dropoffId),
+        pickup_hour: String(pickupHour),
+        pickup_day_of_week: String(pickupDay),
+      });
+
+      try {
+        const response = await fetch(`/route-estimate?${params.toString()}`, { signal: controller.signal });
+        if (response.ok) {
+          const body = await response.json();
+          if (body.estimate_level !== "global" || mapFeatures.length === 0) {
+            estimate = {
+              distance: Number(body.estimated_trip_distance),
+              durationMinutes: Number(body.duration_minutes || body.estimated_trip_duration_seconds / 60),
+            };
+          }
+        }
+      } catch (error) {
+        if (error.name === "AbortError") return;
+      }
+
+      if (!estimate && mapFeatures.length > 0) {
+        estimate = estimateFromZoneGeometry(mapFeatures, pickupId, dropoffId);
+      }
+
+      if (!estimate || !Number.isFinite(estimate.distance) || !Number.isFinite(estimate.durationMinutes)) {
+        return;
+      }
+
+      const nextDistance = Number(estimate.distance.toFixed(1));
+      const nextDuration = Math.max(1, Math.round(estimate.durationMinutes));
+
+      setTrip((current) => {
+        const sameRoute =
+          Number(current.pulocation_id) === pickupId &&
+          Number(current.dolocation_id) === dropoffId &&
+          Number(current.pickup_hour) === pickupHour &&
+          Number(current.pickup_day_of_week) === pickupDay;
+        const alreadyCurrent =
+          Number(current.estimated_trip_distance) === nextDistance &&
+          Number(current.duration_minutes) === nextDuration;
+
+        if (!sameRoute || alreadyCurrent) return current;
+
+        return {
+          ...current,
+          estimated_trip_distance: nextDistance,
+          duration_minutes: nextDuration,
+        };
+      });
+    }
+
+    loadRouteEstimate();
+    return () => controller.abort();
+  }, [trip.pulocation_id, trip.dolocation_id, trip.pickup_hour, trip.pickup_day_of_week, mapFeatures]);
 
   function updateTrip(key, value) {
     setTrip((current) => ({ ...current, [key]: value }));
     setResult(null);
+  }
+
+  function selectMapZone(zoneId) {
+    const key = activeEndpoint === "pickup" ? "pulocation_id" : "dolocation_id";
+    setTrip((current) => ({ ...current, [key]: zoneId }));
+    setResult(null);
+    if (activeEndpoint === "pickup") {
+      setActiveEndpoint("dropoff");
+    }
   }
 
   async function submit(event) {
@@ -433,20 +710,6 @@ function PricingPage() {
                 <input type="number" min="1" max="6" value={trip.passenger_count} onChange={(event) => updateTrip("passenger_count", event.target.value)} />
               </label>
               <label className="field">
-                <span>Distance</span>
-                <div className="input-unit">
-                  <input type="number" min="0.1" step="0.1" value={trip.estimated_trip_distance} onChange={(event) => updateTrip("estimated_trip_distance", event.target.value)} />
-                  <span>mi</span>
-                </div>
-              </label>
-              <label className="field">
-                <span>Duration</span>
-                <div className="input-unit">
-                  <input type="number" min="1" value={trip.duration_minutes} onChange={(event) => updateTrip("duration_minutes", event.target.value)} />
-                  <span>min</span>
-                </div>
-              </label>
-              <label className="field">
                 <span>Pickup hour</span>
                 <div className="range-field">
                   <input type="range" min="0" max="23" value={trip.pickup_hour} onChange={(event) => updateTrip("pickup_hour", event.target.value)} />
@@ -479,6 +742,36 @@ function PricingPage() {
                   {zones.map((zone) => <option key={zone.id} value={zone.id}>{zone.label}</option>)}
                 </select>
               </label>
+            </div>
+
+            <div className="location-picker">
+              <div className="location-picker-toolbar">
+                <div className="segmented-control" aria-label="Map selection target">
+                  <button className={activeEndpoint === "pickup" ? "active" : ""} type="button" onClick={() => setActiveEndpoint("pickup")}>
+                    Pickup
+                  </button>
+                  <button className={activeEndpoint === "dropoff" ? "active" : ""} type="button" onClick={() => setActiveEndpoint("dropoff")}>
+                    Dropoff
+                  </button>
+                </div>
+                <div className="route-estimate-readout">
+                  <span>Route estimate</span>
+                  <strong>{formatNumber(trip.estimated_trip_distance, 1)} mi / {Math.round(Number(trip.duration_minutes) || 0)} min</strong>
+                </div>
+                <div className="selected-route">
+                  <span>PU</span>
+                  <strong>{zoneLabel(trip.pulocation_id)}</strong>
+                  <span>DO</span>
+                  <strong>{zoneLabel(trip.dolocation_id)}</strong>
+                </div>
+              </div>
+              <TaxiZoneMap
+                features={mapFeatures}
+                pickupId={trip.pulocation_id}
+                dropoffId={trip.dolocation_id}
+                activeEndpoint={activeEndpoint}
+                onSelect={selectMapZone}
+              />
             </div>
 
             <div className="form-actions">

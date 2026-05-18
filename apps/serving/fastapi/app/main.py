@@ -16,7 +16,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -36,6 +36,8 @@ APP_DIR = Path(__file__).resolve().parent
 STATIC_DIR = APP_DIR / "static"
 ZONE_LOOKUP_FILE = "taxi_zone_lookup.csv"
 STREAM_DEMO_DIR = "_local_streaming_demo"
+LOCAL_ROUTE_ESTIMATES_FILE = "_local_small_pipeline/gold_route_estimates.parquet"
+LOCAL_ROUTE_ESTIMATES_DELTA_DIR = "_local_delta_store/lakehouse/gold/ml/route_estimates"
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +169,84 @@ def _find_repo_root() -> Path:
     return APP_DIR
 
 
+def _find_route_estimates_path() -> Path | None:
+    repo_root = _find_repo_root()
+    candidates = [
+        repo_root / LOCAL_ROUTE_ESTIMATES_FILE,
+        repo_root / LOCAL_ROUTE_ESTIMATES_DELTA_DIR,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+@lru_cache(maxsize=1)
+def _load_route_estimates() -> pd.DataFrame:
+    path = _find_route_estimates_path()
+    if path is None:
+        return pd.DataFrame()
+
+    if path.is_dir():
+        parquet_files = sorted(path.glob("*.parquet"))
+        if not parquet_files:
+            return pd.DataFrame()
+        return pd.concat([pd.read_parquet(file) for file in parquet_files], ignore_index=True)
+
+    return pd.read_parquet(path)
+
+
+def _route_estimate_response(row: pd.Series) -> dict:
+    duration_seconds = float(row["estimated_trip_duration_seconds"])
+    return {
+        "estimate_level": row["estimate_level"],
+        "pulocation_id": int(row["pulocation_id"]) if not pd.isna(row["pulocation_id"]) else None,
+        "dolocation_id": int(row["dolocation_id"]) if not pd.isna(row["dolocation_id"]) else None,
+        "pickup_hour": int(row["pickup_hour"]) if "pickup_hour" in row and not pd.isna(row["pickup_hour"]) else None,
+        "pickup_day_of_week": int(row["pickup_day_of_week"]) if "pickup_day_of_week" in row and not pd.isna(row["pickup_day_of_week"]) else None,
+        "sample_count": int(row["sample_count"]) if not pd.isna(row["sample_count"]) else 0,
+        "estimated_trip_distance": round(float(row["estimated_trip_distance"]), 2),
+        "estimated_trip_duration_seconds": round(duration_seconds, 0),
+        "duration_minutes": max(1, round(duration_seconds / 60.0)),
+        "source": "gold_route_estimates",
+    }
+
+
+def _lookup_route_estimate(
+    pulocation_id: int,
+    dolocation_id: int,
+    pickup_hour: int,
+    pickup_day_of_week: int,
+) -> dict | None:
+    estimates = _load_route_estimates()
+    if estimates.empty:
+        return None
+
+    route_time = estimates[
+        (estimates["estimate_level"] == "route_time")
+        & (estimates["pulocation_id"].astype("Int64") == int(pulocation_id))
+        & (estimates["dolocation_id"].astype("Int64") == int(dolocation_id))
+        & (estimates["pickup_hour"].astype("Int64") == int(pickup_hour))
+        & (estimates["pickup_day_of_week"].astype("Int64") == int(pickup_day_of_week))
+    ]
+    if not route_time.empty:
+        return _route_estimate_response(route_time.sort_values("sample_count", ascending=False).iloc[0])
+
+    route = estimates[
+        (estimates["estimate_level"] == "route")
+        & (estimates["pulocation_id"].astype("Int64") == int(pulocation_id))
+        & (estimates["dolocation_id"].astype("Int64") == int(dolocation_id))
+    ]
+    if not route.empty:
+        return _route_estimate_response(route.sort_values("sample_count", ascending=False).iloc[0])
+
+    global_estimate = estimates[estimates["estimate_level"] == "global"]
+    if not global_estimate.empty:
+        return _route_estimate_response(global_estimate.sort_values("sample_count", ascending=False).iloc[0])
+
+    return None
+
+
 def _clean_json_value(value: Any) -> Any:
     if pd.isna(value):
         return None
@@ -246,6 +326,25 @@ def zones():
     }
 
 
+@app.get("/route-estimate", tags=["Reference Data"])
+def route_estimate(
+    pulocation_id: int = Query(..., gt=0),
+    dolocation_id: int = Query(..., gt=0),
+    pickup_hour: int = Query(..., ge=0, le=23),
+    pickup_day_of_week: int = Query(..., ge=0, le=6),
+):
+    """Return historical distance/duration estimate for a pickup/dropoff route."""
+    estimate = _lookup_route_estimate(
+        pulocation_id=pulocation_id,
+        dolocation_id=dolocation_id,
+        pickup_hour=pickup_hour,
+        pickup_day_of_week=pickup_day_of_week,
+    )
+    if estimate is None:
+        raise HTTPException(status_code=404, detail="Route estimates unavailable")
+    return estimate
+
+
 @app.get("/stream-demo/data", tags=["Streaming Demo"])
 def stream_demo_data():
     """Return local streaming backend demo predictions and quality metrics."""
@@ -296,6 +395,7 @@ def api_info():
         "docs":    "/docs",
         "health":  "/health",
         "zones":   "/zones",
+        "route_estimate": "GET /route-estimate",
         "stream_demo": "/stream-demo",
         "stream_demo_data": "/stream-demo/data",
         "predict": "POST /predict",
