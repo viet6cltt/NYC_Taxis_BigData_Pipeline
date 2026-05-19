@@ -84,8 +84,6 @@ data:
             regex: ([^:]+)(?::\d+)?;(\d+)
             replacement: $1:$2
             target_label: __address__
-          - action: labelmap
-            regex: __meta_kubernetes_pod_label_(.+)
           - source_labels: [__meta_kubernetes_namespace]
             target_label: namespace
           - source_labels: [__meta_kubernetes_pod_name]
@@ -291,13 +289,12 @@ data:
       - job_name: kubernetes-pods
         kubernetes_sd_configs:
           - role: pod
+            selectors:
+              - role: pod
+                field: spec.nodeName=${NODE_NAME}
         pipeline_stages:
           - cri: {}
         relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_node_name]
-            target_label: __host__
-          - action: labelmap
-            regex: __meta_kubernetes_pod_label_(.+)
           - source_labels: [__meta_kubernetes_namespace]
             target_label: namespace
           - source_labels: [__meta_kubernetes_pod_name]
@@ -331,6 +328,12 @@ spec:
           image: grafana/promtail:3.2.1
           args:
             - -config.file=/etc/promtail/promtail.yml
+            - -config.expand-env=true
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           volumeMounts:
             - name: config
               mountPath: /etc/promtail
@@ -420,7 +423,7 @@ data:
           "id": 1,
           "targets": [
             {
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"lakehouse|ingestion\", container!=\"POD\", image!=\"\"}[1m])) by (namespace, pod)",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"lakehouse|ingestion\", container!=\"POD\", image!=\"\"}[1m]) and on(namespace,pod,container) (time() - container_last_seen{namespace=~\"lakehouse|ingestion\", container!=\"POD\", image!=\"\"} < 30)) by (namespace, pod)",
               "legendFormat": "{{namespace}}/{{pod}}"
             }
           ],
@@ -439,7 +442,7 @@ data:
           "id": 2,
           "targets": [
             {
-              "expr": "sum(container_memory_working_set_bytes{namespace=~\"lakehouse|ingestion\", container!=\"POD\", image!=\"\"}) by (namespace, pod)",
+              "expr": "sum(container_memory_working_set_bytes{namespace=~\"lakehouse|ingestion\", container!=\"POD\", image!=\"\"} and on(namespace,pod,container) (time() - container_last_seen{namespace=~\"lakehouse|ingestion\", container!=\"POD\", image!=\"\"} < 30)) by (namespace, pod)",
               "legendFormat": "{{namespace}}/{{pod}}"
             }
           ],
@@ -447,8 +450,185 @@ data:
           "type": "timeseries"
         },
         {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "id": 4,
+          "targets": [
+            {
+              "expr": "count(count by (pod) (container_memory_working_set_bytes{namespace=\"lakehouse\", pod=~\".*-exec-[0-9]+.*\", container!=\"POD\", image!=\"\"} and on(namespace,pod,container) (time() - container_last_seen{namespace=\"lakehouse\", pod=~\".*-exec-[0-9]+.*\", container!=\"POD\", image!=\"\"} < 30))) or vector(0)",
+              "legendFormat": "executors"
+            }
+          ],
+          "title": "Spark Executor Autoscaling",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "cores"
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "id": 11,
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"POD\", image!=\"\"}[1m]))",
+              "legendFormat": "used cores"
+            },
+            {
+              "expr": "sum(machine_cpu_cores)",
+              "legendFormat": "total cores"
+            }
+          ],
+          "title": "Cluster CPU Used / Total",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+          "id": 12,
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{container!=\"POD\", image!=\"\"} and on(namespace,pod,container) (time() - container_last_seen{container!=\"POD\", image!=\"\"} < 30))",
+              "legendFormat": "used memory"
+            },
+            {
+              "expr": "sum(machine_memory_bytes)",
+              "legendFormat": "total memory"
+            }
+          ],
+          "title": "Cluster Memory Used / Total",
+          "type": "timeseries"
+        },
+        {
           "datasource": "Loki",
-          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+          "id": 5,
+          "targets": [
+            {
+              "expr": "avg_over_time({namespace=\"lakehouse\"} |= \"[benchmark][spark_progress]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_progress\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | unwrap trigger_execution_ms [$__interval])",
+              "legendFormat": "triggerExecution"
+            },
+            {
+              "expr": "avg_over_time({namespace=\"lakehouse\"} |= \"[benchmark][spark_progress]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_progress\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | unwrap add_batch_ms [$__interval])",
+              "legendFormat": "addBatch"
+            }
+          ],
+          "title": "Spark Microbatch Duration",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Loki",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "rows"
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+          "id": 6,
+          "targets": [
+            {
+              "expr": "avg_over_time({namespace=\"lakehouse\"} |= \"[benchmark][spark_progress]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_progress\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | unwrap num_input_rows [$__interval])",
+              "legendFormat": "input rows"
+            }
+          ],
+          "title": "Spark Streaming Input Rows",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Loki",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "rps"
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+          "id": 7,
+          "targets": [
+            {
+              "expr": "avg_over_time({namespace=\"lakehouse\"} |= \"[benchmark][spark_progress]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_progress\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | unwrap input_rows_per_second [$__interval])",
+              "legendFormat": "input"
+            },
+            {
+              "expr": "avg_over_time({namespace=\"lakehouse\"} |= \"[benchmark][spark_progress]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_progress\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | unwrap processed_rows_per_second [$__interval])",
+              "legendFormat": "processed"
+            }
+          ],
+          "title": "Spark Streaming Rows Per Second",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Loki",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+          "id": 8,
+          "targets": [
+            {
+              "expr": "max_over_time({namespace=\"lakehouse\"} |= \"[benchmark][spark_batch_job]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_batch_job\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | status=\"success\" | unwrap duration_ms [$__interval])",
+              "legendFormat": "batch {{job_name}}"
+            },
+            {
+              "expr": "max_over_time({namespace=\"lakehouse\"} |= \"[benchmark][spark_training_job]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_training_job\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | status=\"success\" | unwrap duration_ms [$__interval])",
+              "legendFormat": "training {{job_name}}"
+            }
+          ],
+          "title": "Spark Batch/Training Job Duration",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Loki",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+          "id": 9,
+          "targets": [
+            {
+              "expr": "max_over_time({namespace=\"lakehouse\"} |= \"[benchmark][spark_training_job]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_training_job\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | status=\"success\" | unwrap test_r2 [$__interval])",
+              "legendFormat": "test r2"
+            },
+            {
+              "expr": "max_over_time({namespace=\"lakehouse\"} |= \"[benchmark][spark_training_job]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_training_job\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | status=\"success\" | unwrap test_rmse [$__interval])",
+              "legendFormat": "test rmse"
+            }
+          ],
+          "title": "Training Quality",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Loki",
+          "gridPos": {"h": 10, "w": 12, "x": 0, "y": 40},
           "id": 3,
           "targets": [
             {
@@ -456,6 +636,18 @@ data:
             }
           ],
           "title": "Spark Microbatch Progress Logs",
+          "type": "logs"
+        },
+        {
+          "datasource": "Loki",
+          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 40},
+          "id": 10,
+          "targets": [
+            {
+              "expr": "{namespace=\"lakehouse\"} |~ \"\\\\[benchmark\\\\]\\\\[spark_(batch|training)_job\\\\]\" | regexp \"\\\\[benchmark\\\\]\\\\[spark_(batch|training)_job\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | line_format \"job={{.job_name}} status={{.status}} duration={{.duration_ms}}ms output={{.output_path}} run={{.run_id}}\""
+            }
+          ],
+          "title": "Spark Batch/Training Benchmark Logs",
           "type": "logs"
         }
       ],
@@ -465,6 +657,7 @@ data:
         "from": "now-30m",
         "to": "now"
       },
+      "refresh": "5s",
       "title": "NYC Taxi Streaming Benchmark",
       "uid": "nyc-taxi-streaming-benchmark",
       "version": 1

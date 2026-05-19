@@ -6,6 +6,7 @@ from app.config import (
     MINIO_ACCESS_KEY,
     MINIO_SECRET_KEY,
 )
+from app.benchmark import benchmark_job
 from app.reader import (
     read_prediction_actuals,
     read_predictions,
@@ -53,30 +54,35 @@ def main() -> None:
     spark = build_spark_session()
 
     try:
-        if GOLD_JOB == "route_estimates":
-            completed_df = read_silver_completed(spark)
-            route_estimates_df = build_route_estimates(completed_df)
-            write_route_estimates(route_estimates_df)
+        with benchmark_job(
+            prefix="[benchmark][spark_batch_job]",
+            job_name=f"gold_{GOLD_JOB}",
+            extra={"gold_job": GOLD_JOB},
+        ):
+            if GOLD_JOB == "route_estimates":
+                completed_df = read_silver_completed(spark)
+                route_estimates_df = build_route_estimates(completed_df)
+                write_route_estimates(route_estimates_df)
 
-        elif GOLD_JOB == "features":
-            completed_df = read_silver_completed(spark)
-            route_estimates_df = read_route_estimates(spark)
-            features_df = build_training_features(completed_df, route_estimates_df)
-            write_features(features_df)
+            elif GOLD_JOB == "features":
+                completed_df = read_silver_completed(spark)
+                route_estimates_df = read_route_estimates(spark)
+                features_df = build_training_features(completed_df, route_estimates_df)
+                write_features(features_df)
 
-        elif GOLD_JOB == "prediction_actuals":
-            predictions_df = read_predictions(spark)
-            completed_df = read_silver_completed(spark)
-            prediction_actuals_df = build_prediction_actuals(predictions_df, completed_df)
-            write_prediction_actuals(prediction_actuals_df)
+            elif GOLD_JOB == "prediction_actuals":
+                predictions_df = read_predictions(spark)
+                completed_df = read_silver_completed(spark)
+                prediction_actuals_df = build_prediction_actuals(predictions_df, completed_df)
+                write_prediction_actuals(prediction_actuals_df)
 
-        elif GOLD_JOB == "model_quality_daily":
-            prediction_actuals_df = read_prediction_actuals(spark)
-            quality_df = build_model_quality_daily(prediction_actuals_df)
-            write_model_quality_daily(quality_df)
+            elif GOLD_JOB == "model_quality_daily":
+                prediction_actuals_df = read_prediction_actuals(spark)
+                quality_df = build_model_quality_daily(prediction_actuals_df)
+                write_model_quality_daily(quality_df)
 
-        else:
-            raise ValueError(f"Unsupported GOLD_JOB: {GOLD_JOB}")
+            else:
+                raise ValueError(f"Unsupported GOLD_JOB: {GOLD_JOB}")
 
         print("=== [feature_engineering] Done ===")
     finally:

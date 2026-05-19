@@ -1,7 +1,7 @@
 #!/bin/bash
 # Quick test script to verify Trino + Hive + Superset connections
 
-NAMESPACE=${1:-lakehouse}
+NAMESPACE=${1:-serving}
 
 echo "🔍 Testing Trino + Hive + Superset Connections..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

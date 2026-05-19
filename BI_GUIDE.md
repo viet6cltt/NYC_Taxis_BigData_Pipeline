@@ -33,8 +33,8 @@ bash scripts/bi/setup_bi.sh
 Port-forward:
 
 ```bash
-kubectl port-forward -n lakehouse svc/superset 8088:8088 &
-kubectl port-forward -n lakehouse svc/trino 8080:8080 &
+kubectl port-forward -n serving svc/superset 8088:8088 &
+kubectl port-forward -n serving svc/trino 8080:8080 &
 ```
 
 Truy cập:
@@ -148,9 +148,10 @@ Xem thêm query mẫu tại [scripts/bi/sample_queries.sql](scripts/bi/sample_qu
 Script `scripts/bi/create_dashboard.py` tạo 3 dashboard riêng để mỗi dashboard kể một câu chuyện rõ:
 
 1. **NYC Taxi - Business Overview**
-   - completed trips, revenue, avg fare
-   - xu hướng tháng, nhu cầu theo giờ
-   - top routes, payment mix, lifecycle status
+   - completed trips, revenue, avg fare, avg trip distance
+   - xu hướng ngày/tháng, nhu cầu theo giờ, nhịp weekday x hour
+   - phân phối fare bucket, distance bucket, avg fare theo distance
+   - pickup/dropoff hotspot, top route pairs, payment mix, lifecycle status
    - nguồn chính: `delta.silver_nyc_taxi.trip_lifecycle`
 
 2. **NYC Taxi - Realtime Prediction Ops**

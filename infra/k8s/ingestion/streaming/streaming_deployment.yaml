@@ -26,7 +26,7 @@ spec:
               done
       containers:
         - name: producer
-          image: localhost:5000/nyc-taxi-replay:v1.0
+          image: 10.148.0.2:5000/nyc-taxi-replay:v1.0
           imagePullPolicy: Always
           env:
             - name: KAFKA_STARTED_TOPIC
@@ -38,11 +38,11 @@ spec:
             - name: DATA_DIR
               value: "/data/yellow_data"
             - name: YEAR
-              value: "2024"
+              value: "2025"
             - name: LOOP_STREAMING
               value: "true"
             - name: STREAMING_SPEED_MULTIPLIER
-              value: "100"
+              value: "200"
             - name: STREAMING_BATCH_SIZE
               value: "100"
             - name: STREAMING_MAX_SLEEP_SECONDS

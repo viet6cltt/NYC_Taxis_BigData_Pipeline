@@ -172,8 +172,8 @@ kubectl port-forward -n lakehouse svc/nyc-taxi-airflow 8081:8080
 
 ```bash
 bash scripts/bi/setup_bi.sh
-kubectl port-forward -n lakehouse svc/superset 8088:8088
-kubectl port-forward -n lakehouse svc/trino 8080:8080
+kubectl port-forward -n serving svc/superset 8088:8088
+kubectl port-forward -n serving svc/trino 8080:8080
 python3 scripts/bi/create_dashboard.py
 ```
 

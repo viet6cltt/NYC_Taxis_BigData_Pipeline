@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nyc-taxi-fastapi
-  namespace: lakehouse
+  namespace: serving
   labels:
     app: nyc-taxi-fastapi
 spec:
@@ -72,7 +72,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nyc-taxi-fastapi
-  namespace: lakehouse
+  namespace: serving
   labels:
     app: nyc-taxi-fastapi
 spec:
@@ -89,7 +89,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nyc-taxi-fastapi-nodeport
-  namespace: lakehouse
+  namespace: serving
   labels:
     app: nyc-taxi-fastapi
 spec:
@@ -100,4 +100,4 @@ spec:
     - name: http
       port: 8000
       targetPort: 8000
-      nodePort: 30006
+      nodePort: 30008

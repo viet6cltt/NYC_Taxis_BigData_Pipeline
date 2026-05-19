@@ -43,6 +43,15 @@ MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 STORAGE_PATH="${STORAGE_PATH:-/data/yellow_data}"
 YEAR="${YEAR:-2024}"
 OUTPUT_PATH="${OUTPUT_PATH:-s3a://lakehouse/bronze/nyc-taxi/trip_completed}"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-2g}"
+SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-2}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-4g}"
+SPARK_DYNAMIC_ALLOCATION_ENABLED="${SPARK_DYNAMIC_ALLOCATION_ENABLED:-false}"
+SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED="${SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED:-true}"
+SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS:-1}"
+SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS:-4}"
+SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS:-$SPARK_EXECUTOR_INSTANCES}"
+BENCHMARK_METRICS_ENABLED="${BENCHMARK_METRICS_ENABLED:-true}"
 
 # Kiểm tra và tải Spark client nếu máy local chưa có
 if [ ! -d "$SPARK_DIR" ]; then
@@ -61,11 +70,24 @@ echo "    STORAGE_PATH=${STORAGE_PATH}"
 echo "    YEAR=${YEAR}"
 echo "    OUTPUT_PATH=${OUTPUT_PATH}"
 
+dynamic_allocation_conf=()
+if [ "$SPARK_DYNAMIC_ALLOCATION_ENABLED" = "true" ]; then
+    dynamic_allocation_conf=(
+        --conf "spark.dynamicAllocation.enabled=$SPARK_DYNAMIC_ALLOCATION_ENABLED"
+        --conf "spark.dynamicAllocation.shuffleTracking.enabled=$SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED"
+        --conf "spark.dynamicAllocation.minExecutors=$SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS"
+        --conf "spark.dynamicAllocation.maxExecutors=$SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS"
+        --conf "spark.dynamicAllocation.initialExecutors=$SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS"
+    )
+fi
+
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
     --deploy-mode cluster \
     --name nyc-taxi-historical-to-bronze \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
+    --conf spark.kubernetes.driver.node.selector.workload=spark \
+    --conf spark.kubernetes.executor.node.selector.workload=spark \
     --conf spark.kubernetes.container.image="${REGISTRY}/${IMAGE}" \
     --conf spark.kubernetes.container.image.pullPolicy=Always \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
@@ -73,6 +95,10 @@ echo "    OUTPUT_PATH=${OUTPUT_PATH}"
     --conf spark.kubernetes.authenticate.submission.caCertFile="$K8S_CA_CERT_FILE" \
     --conf spark.kubernetes.authenticate.submission.oauthTokenFile="$K8S_SUBMISSION_TOKEN_FILE" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
+    --conf spark.ui.prometheus.enabled=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/scrape=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/path=/metrics/prometheus \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/port=4040 \
     \
     --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.mount.path=/data \
     --conf spark.kubernetes.driver.volumes.persistentVolumeClaim.data-vol.options.claimName=nfs-nyc-taxi-pvc \
@@ -84,6 +110,7 @@ echo "    OUTPUT_PATH=${OUTPUT_PATH}"
     --conf spark.kubernetes.driverEnv.STORAGE_PATH="$STORAGE_PATH" \
     --conf spark.kubernetes.driverEnv.YEAR="$YEAR" \
     --conf spark.kubernetes.driverEnv.OUTPUT_PATH="$OUTPUT_PATH" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_METRICS_ENABLED="$BENCHMARK_METRICS_ENABLED" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
     --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
     \
@@ -95,18 +122,17 @@ echo "    OUTPUT_PATH=${OUTPUT_PATH}"
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     --conf spark.hadoop.fs.s3a.attempts.maximum=3 \
     \
-    --conf spark.driver.memory=1g \
-    --conf spark.executor.instances=1 \
-    --conf spark.executor.memory=3g \
+    --conf spark.driver.memory="$SPARK_DRIVER_MEMORY" \
+    --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
+    --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.kubernetes.driver.request.cores=1 \
     --conf spark.kubernetes.driver.limit.cores=2 \
     --conf spark.kubernetes.executor.request.cores=1 \
-    --conf spark.kubernetes.executor.limit.cores=2 \
-    --conf spark.kubernetes.executor.node.selector.role=storage \
-    --conf spark.kubernetes.driver.node.selector.role=storage \
+    --conf spark.kubernetes.executor.limit.cores=4 \
     \
-    --conf spark.sql.shuffle.partitions=2 \
+    --conf spark.sql.shuffle.partitions=6 \
     --conf spark.sql.adaptive.enabled=true \
     --conf spark.sql.adaptive.coalescePartitions.enabled=true \
     \
+    "${dynamic_allocation_conf[@]}" \
     "$APP_FILE"

@@ -49,6 +49,26 @@ spec:
               value: "true"
             - name: NYC_TAXI_SPARK_EXECUTOR_DELETE_ON_TERMINATION
               value: "true"
+            - name: NYC_TAXI_MLOPS_DRIVER_MEMORY
+              value: "2g"
+            - name: NYC_TAXI_MLOPS_EXECUTOR_MEMORY
+              value: "8g"
+            - name: NYC_TAXI_MLOPS_DRIVER_MEMORY_OVERHEAD
+              value: "1g"
+            - name: NYC_TAXI_MLOPS_EXECUTOR_MEMORY_OVERHEAD
+              value: "3g"
+            - name: NYC_TAXI_MLOPS_EXECUTOR_INSTANCES
+              value: "3"
+            - name: NYC_TAXI_MLOPS_EXECUTOR_CORES
+              value: "2"
+            - name: NYC_TAXI_XGB_NUM_WORKERS
+              value: "3"
+            - name: NYC_TAXI_MLOPS_FEATURE_DRIVER_MEMORY
+              value: "2g"
+            - name: NYC_TAXI_MLOPS_FEATURE_EXECUTOR_MEMORY
+              value: "4g"
+            - name: NYC_TAXI_MLOPS_FEATURE_EXECUTOR_CORES
+              value: "1"
             - name: NYC_TAXI_MINIO_ENDPOINT
               value: "http://minio-api.storage.svc.cluster.local:9000"
             - name: NYC_TAXI_MINIO_ACCESS_KEY
@@ -99,10 +119,10 @@ spec:
           resources:
             requests:
               cpu: "500m"
-              memory: "1Gi"
+              memory: "2Gi"
             limits:
               cpu: "2"
-              memory: "2Gi"
+              memory: "4Gi"
 ---
 apiVersion: v1
 kind: Service

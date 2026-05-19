@@ -69,6 +69,8 @@ set -euo pipefail
   --deploy-mode cluster \\
   --name nyc-taxi-{silver_job} \\
   --conf spark.kubernetes.namespace={NAMESPACE} \\
+  --conf spark.kubernetes.driver.node.selector.workload=spark \\
+  --conf spark.kubernetes.executor.node.selector.workload=spark \\
   --conf spark.kubernetes.container.image={SPARK_IMAGE} \\
   --conf spark.kubernetes.container.image.pullPolicy={SPARK_IMAGE_PULL_POLICY} \\
   --conf spark.kubernetes.authenticate.driver.serviceAccountName={SERVICE_ACCOUNT} \\

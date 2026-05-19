@@ -56,6 +56,12 @@ SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
 SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-2g}"
 SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-1}"
+SPARK_DYNAMIC_ALLOCATION_ENABLED="${SPARK_DYNAMIC_ALLOCATION_ENABLED:-false}"
+SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED="${SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED:-true}"
+SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS:-1}"
+SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS:-3}"
+SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS:-$SPARK_EXECUTOR_INSTANCES}"
+BENCHMARK_METRICS_ENABLED="${BENCHMARK_METRICS_ENABLED:-true}"
 N_LOCATION_CLUSTERS="${N_LOCATION_CLUSTERS:-5}"
 N_TEMPORAL_CLUSTERS="${N_TEMPORAL_CLUSTERS:-4}"
 MIN_TRIP_DISTANCE="${MIN_TRIP_DISTANCE:-0.05}"
@@ -79,11 +85,24 @@ fi
 
 echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
 
+dynamic_allocation_conf=()
+if [ "$SPARK_DYNAMIC_ALLOCATION_ENABLED" = "true" ]; then
+    dynamic_allocation_conf=(
+        --conf "spark.dynamicAllocation.enabled=$SPARK_DYNAMIC_ALLOCATION_ENABLED"
+        --conf "spark.dynamicAllocation.shuffleTracking.enabled=$SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED"
+        --conf "spark.dynamicAllocation.minExecutors=$SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS"
+        --conf "spark.dynamicAllocation.maxExecutors=$SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS"
+        --conf "spark.dynamicAllocation.initialExecutors=$SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS"
+    )
+fi
+
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
     --deploy-mode cluster \
     --name "nyc-taxi-gold-${GOLD_JOB}" \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
+    --conf spark.kubernetes.driver.node.selector.workload=spark \
+    --conf spark.kubernetes.executor.node.selector.workload=spark \
     --conf spark.kubernetes.container.image="$IMAGE" \
     --conf spark.kubernetes.container.image.pullPolicy=Always \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
@@ -91,6 +110,10 @@ echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
     --conf spark.kubernetes.authenticate.submission.caCertFile="$K8S_CA_CERT_FILE" \
     --conf spark.kubernetes.authenticate.submission.oauthTokenFile="$K8S_SUBMISSION_TOKEN_FILE" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
+    --conf spark.ui.prometheus.enabled=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/scrape=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/path=/metrics/prometheus \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/port=4040 \
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.executorEnv.PYTHONPATH="/opt/spark/work-dir" \
@@ -102,6 +125,7 @@ echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
     --conf spark.kubernetes.driverEnv.GOLD_PREDICTION_ACTUALS_PATH="$GOLD_PREDICTION_ACTUALS_PATH" \
     --conf spark.kubernetes.driverEnv.GOLD_MODEL_QUALITY_DAILY_PATH="$GOLD_MODEL_QUALITY_DAILY_PATH" \
     --conf spark.kubernetes.driverEnv.WRITE_MODE="$WRITE_MODE" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_METRICS_ENABLED="$BENCHMARK_METRICS_ENABLED" \
     --conf spark.kubernetes.driverEnv.N_LOCATION_CLUSTERS="$N_LOCATION_CLUSTERS" \
     --conf spark.kubernetes.driverEnv.N_TEMPORAL_CLUSTERS="$N_TEMPORAL_CLUSTERS" \
     --conf spark.kubernetes.driverEnv.MIN_TRIP_DISTANCE="$MIN_TRIP_DISTANCE" \
@@ -131,4 +155,5 @@ echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
     --conf spark.sql.shuffle.partitions=6 \
     --conf spark.sql.adaptive.enabled=true \
     \
+    "${dynamic_allocation_conf[@]}" \
     "$APP_FILE"

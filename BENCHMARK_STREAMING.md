@@ -58,8 +58,8 @@ Loki query for Spark progress:
 Prometheus queries for resource usage:
 
 ```promql
-sum(rate(container_cpu_usage_seconds_total{namespace=~"lakehouse|ingestion", container!="POD", image!=""}[1m])) by (namespace, pod)
-sum(container_memory_working_set_bytes{namespace=~"lakehouse|ingestion", container!="POD", image!=""}) by (namespace, pod)
+sum(rate(container_cpu_usage_seconds_total{namespace=~"lakehouse|ingestion", container!="POD", image!=""}[1m]) and on(namespace,pod,container) (time() - container_last_seen{namespace=~"lakehouse|ingestion", container!="POD", image!=""} < 30)) by (namespace, pod)
+sum(container_memory_working_set_bytes{namespace=~"lakehouse|ingestion", container!="POD", image!=""} and on(namespace,pod,container) (time() - container_last_seen{namespace=~"lakehouse|ingestion", container!="POD", image!=""} < 30)) by (namespace, pod)
 ```
 
 ## Run Benchmark

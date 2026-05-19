@@ -21,7 +21,7 @@ for arg in "$@"; do
   [[ "$arg" == "--skip-hive" ]] && SKIP_HIVE=true
 done
 
-NAMESPACE="lakehouse"
+NAMESPACE="serving"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Màu sắc terminal

@@ -53,10 +53,16 @@ STARTING_VERSION="${STARTING_VERSION:-}"
 SPARK_LOCAL_DIR="${SPARK_LOCAL_DIR:-/data/spark-local/silver}"
 TMPDIR="${TMPDIR:-/data/tmp/silver}"
 S3A_BUFFER_DIR="${S3A_BUFFER_DIR:-/data/s3a-buffer/silver}"
-SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
-SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-2g}"
-SPARK_SHUFFLE_PARTITIONS="${SPARK_SHUFFLE_PARTITIONS:-4}"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-2g}"
+SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-2}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-4g}"
+SPARK_SHUFFLE_PARTITIONS="${SPARK_SHUFFLE_PARTITIONS:-6}"
+SPARK_DYNAMIC_ALLOCATION_ENABLED="${SPARK_DYNAMIC_ALLOCATION_ENABLED:-false}"
+SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED="${SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED:-true}"
+SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS:-1}"
+SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS:-4}"
+SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS:-$SPARK_EXECUTOR_INSTANCES}"
+BENCHMARK_METRICS_ENABLED="${BENCHMARK_METRICS_ENABLED:-true}"
 
 # MinIO / Delta
 MINIO_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.storage.svc.cluster.local:9000}"
@@ -128,11 +134,24 @@ submit_silver_job() {
     echo "--- Submit silver job=${silver_job}, mode=${pipeline_mode} ---"
     ensure_data_dirs
 
+    local dynamic_allocation_conf=()
+    if [ "$SPARK_DYNAMIC_ALLOCATION_ENABLED" = "true" ]; then
+        dynamic_allocation_conf=(
+            --conf "spark.dynamicAllocation.enabled=$SPARK_DYNAMIC_ALLOCATION_ENABLED"
+            --conf "spark.dynamicAllocation.shuffleTracking.enabled=$SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED"
+            --conf "spark.dynamicAllocation.minExecutors=$SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS"
+            --conf "spark.dynamicAllocation.maxExecutors=$SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS"
+            --conf "spark.dynamicAllocation.initialExecutors=$SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS"
+        )
+    fi
+
     "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
     --deploy-mode cluster \
     --name "nyc-taxi-silver-${silver_job}" \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
+    --conf spark.kubernetes.driver.node.selector.workload=spark \
+    --conf spark.kubernetes.executor.node.selector.workload=spark \
     --conf spark.kubernetes.container.image="${REGISTRY}/${IMAGE}" \
     --conf spark.kubernetes.container.image.pullPolicy=Always \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
@@ -140,6 +159,10 @@ submit_silver_job() {
     --conf spark.kubernetes.authenticate.submission.caCertFile="$K8S_CA_CERT_FILE" \
     --conf spark.kubernetes.authenticate.submission.oauthTokenFile="$K8S_SUBMISSION_TOKEN_FILE" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
+    --conf spark.ui.prometheus.enabled=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/scrape=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/path=/metrics/prometheus \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/port=4040 \
     \
     --conf spark.kubernetes.driverEnv.SILVER_JOB="$silver_job" \
     --conf spark.kubernetes.driverEnv.PIPELINE_MODE="$pipeline_mode" \
@@ -154,6 +177,7 @@ submit_silver_job() {
     --conf spark.kubernetes.driverEnv.LIFECYCLE_TTL_HOURS="$LIFECYCLE_TTL_HOURS" \
     --conf spark.kubernetes.driverEnv.LIFECYCLE_MERGE_SINCE_TIMESTAMP="$LIFECYCLE_MERGE_SINCE_TIMESTAMP" \
     --conf spark.kubernetes.driverEnv.LIFECYCLE_MERGE_UNTIL_TIMESTAMP="$LIFECYCLE_MERGE_UNTIL_TIMESTAMP" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_METRICS_ENABLED="$BENCHMARK_METRICS_ENABLED" \
     --conf spark.kubernetes.driverEnv.TMPDIR="$TMPDIR" \
     --conf spark.executorEnv.TMPDIR="$TMPDIR" \
     \
@@ -186,13 +210,14 @@ submit_silver_job() {
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.kubernetes.driver.request.cores=0.5 \
     --conf spark.kubernetes.driver.limit.cores=1.5 \
-    --conf spark.kubernetes.executor.request.cores=0.5 \
-    --conf spark.kubernetes.executor.limit.cores=1 \
+    --conf spark.kubernetes.executor.request.cores=1 \
+    --conf spark.kubernetes.executor.limit.cores=3 \
     \
     --conf spark.sql.shuffle.partitions="$SPARK_SHUFFLE_PARTITIONS" \
     --conf spark.sql.adaptive.enabled=true \
     --conf spark.sql.adaptive.coalescePartitions.enabled=true \
     \
+    "${dynamic_allocation_conf[@]}" \
     "${starting_version_conf[@]}" \
     "$APP_FILE"
 }

@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const fastApiTarget = process.env.VITE_API_TARGET || "http://127.0.0.1:8000";
+const fastApiTarget = process.env.VITE_API_TARGET || "http://34.143.191.48:30008";
 
 export default defineConfig({
   plugins: [react()],

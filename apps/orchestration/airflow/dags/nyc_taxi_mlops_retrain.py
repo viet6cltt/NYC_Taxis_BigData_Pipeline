@@ -72,10 +72,16 @@ GOLD_MODEL_QUALITY_DAILY_PATH = os.getenv(
     "s3a://lakehouse/gold/monitoring/model_quality_daily",
 )
 
-SPARK_DRIVER_MEMORY = os.getenv("NYC_TAXI_MLOPS_DRIVER_MEMORY", "1g")
-SPARK_EXECUTOR_MEMORY = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_MEMORY", "2g")
-SPARK_EXECUTOR_INSTANCES = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_INSTANCES", "1")
-SPARK_EXECUTOR_CORES = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_CORES", "1")
+SPARK_FEATURE_DRIVER_MEMORY = os.getenv("NYC_TAXI_MLOPS_FEATURE_DRIVER_MEMORY", "2g")
+SPARK_FEATURE_EXECUTOR_MEMORY = os.getenv("NYC_TAXI_MLOPS_FEATURE_EXECUTOR_MEMORY", "4g")
+SPARK_TRAIN_DRIVER_MEMORY = os.getenv("NYC_TAXI_MLOPS_DRIVER_MEMORY", "2g")
+SPARK_TRAIN_EXECUTOR_MEMORY = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_MEMORY", "6g")
+SPARK_TRAIN_DRIVER_MEMORY_OVERHEAD = os.getenv("NYC_TAXI_MLOPS_DRIVER_MEMORY_OVERHEAD", "1g")
+SPARK_TRAIN_EXECUTOR_MEMORY_OVERHEAD = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_MEMORY_OVERHEAD", "2g")
+SPARK_FEATURE_EXECUTOR_INSTANCES = os.getenv("NYC_TAXI_MLOPS_FEATURE_EXECUTOR_INSTANCES", "1")
+SPARK_TRAIN_EXECUTOR_INSTANCES = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_INSTANCES", "3")
+SPARK_FEATURE_EXECUTOR_CORES = os.getenv("NYC_TAXI_MLOPS_FEATURE_EXECUTOR_CORES", "1")
+SPARK_TRAIN_EXECUTOR_CORES = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_CORES", "2")
 SPARK_SHUFFLE_PARTITIONS = os.getenv("NYC_TAXI_MLOPS_SHUFFLE_PARTITIONS", "6")
 SPARK_DRIVER_DELETE_ON_TERMINATION = os.getenv(
     "NYC_TAXI_SPARK_DRIVER_DELETE_ON_TERMINATION",
@@ -125,11 +131,29 @@ def spark_submit_command(
     name: str,
     image: str,
     driver_env: dict[str, str | int | float],
+    driver_memory: str,
+    executor_memory: str,
+    executor_instances: str,
+    executor_cores: str,
+    driver_memory_overhead: str | None = None,
+    executor_memory_overhead: str | None = None,
+    use_spark_node_selector: bool = True,
 ) -> str:
     env_conf = "\n".join(
         f"  --conf spark.kubernetes.driverEnv.{key}={_quote(value)} \\"
         for key, value in driver_env.items()
     )
+    node_selector_conf = (
+        "  --conf spark.kubernetes.driver.node.selector.workload=spark \\\n"
+        "  --conf spark.kubernetes.executor.node.selector.workload=spark \\\n"
+        if use_spark_node_selector
+        else ""
+    )
+    overhead_conf = ""
+    if driver_memory_overhead:
+        overhead_conf += f"  --conf spark.driver.memoryOverhead={_quote(driver_memory_overhead)} \\\n"
+    if executor_memory_overhead:
+        overhead_conf += f"  --conf spark.executor.memoryOverhead={_quote(executor_memory_overhead)} \\\n"
 
     return f"""
 set -euo pipefail
@@ -139,16 +163,18 @@ set -euo pipefail
   --deploy-mode cluster \\
   --name {name} \\
   --conf spark.kubernetes.namespace={NAMESPACE} \\
+{node_selector_conf}\
   --conf spark.kubernetes.container.image={image} \\
   --conf spark.kubernetes.container.image.pullPolicy={SPARK_IMAGE_PULL_POLICY} \\
   --conf spark.kubernetes.authenticate.driver.serviceAccountName={SERVICE_ACCOUNT} \\
   --conf spark.kubernetes.submission.waitAppCompletion=true \\
   --conf spark.kubernetes.driver.deleteOnTermination={SPARK_DRIVER_DELETE_ON_TERMINATION} \\
   --conf spark.kubernetes.executor.deleteOnTermination={SPARK_EXECUTOR_DELETE_ON_TERMINATION} \\
-  --conf spark.executor.instances={SPARK_EXECUTOR_INSTANCES} \\
-  --conf spark.executor.cores={SPARK_EXECUTOR_CORES} \\
-  --conf spark.executor.memory={SPARK_EXECUTOR_MEMORY} \\
-  --conf spark.driver.memory={SPARK_DRIVER_MEMORY} \\
+  --conf spark.executor.instances={executor_instances} \\
+  --conf spark.executor.cores={executor_cores} \\
+  --conf spark.executor.memory={executor_memory} \\
+  --conf spark.driver.memory={driver_memory} \\
+{overhead_conf}\
   --conf spark.sql.shuffle.partitions={SPARK_SHUFFLE_PARTITIONS} \\
   --conf spark.sql.adaptive.enabled=true \\
   --conf spark.sql.adaptive.coalescePartitions.enabled=true \\
@@ -410,7 +436,7 @@ training_env = {
 with DAG(
     dag_id="nyc_taxi_mlops_retrain",
     description="Retrain NYC Taxi fare model, gate metrics in Airflow, and promote passing candidates.",
-    schedule="0 3 * * 1",
+    schedule="30 * * * *",
     start_date=datetime(2026, 1, 1),
     catchup=False,
     max_active_runs=1,
@@ -429,6 +455,10 @@ with DAG(
                 name="nyc-taxi-gold-route-estimates",
                 image=FEATURE_IMAGE,
                 driver_env={**feature_env, "GOLD_JOB": "route_estimates"},
+                driver_memory=SPARK_FEATURE_DRIVER_MEMORY,
+                executor_memory=SPARK_FEATURE_EXECUTOR_MEMORY,
+                executor_instances=SPARK_FEATURE_EXECUTOR_INSTANCES,
+                executor_cores=SPARK_FEATURE_EXECUTOR_CORES,
             )
         ],
         service_account_name=SERVICE_ACCOUNT,
@@ -449,6 +479,10 @@ with DAG(
                 name="nyc-taxi-gold-features",
                 image=FEATURE_IMAGE,
                 driver_env={**feature_env, "GOLD_JOB": "features"},
+                driver_memory=SPARK_FEATURE_DRIVER_MEMORY,
+                executor_memory=SPARK_FEATURE_EXECUTOR_MEMORY,
+                executor_instances=SPARK_FEATURE_EXECUTOR_INSTANCES,
+                executor_cores=SPARK_FEATURE_EXECUTOR_CORES,
             )
         ],
         service_account_name=SERVICE_ACCOUNT,
@@ -469,6 +503,13 @@ with DAG(
                 name="nyc-taxi-train-candidate",
                 image=TRAIN_IMAGE,
                 driver_env=training_env,
+                driver_memory=SPARK_TRAIN_DRIVER_MEMORY,
+                executor_memory=SPARK_TRAIN_EXECUTOR_MEMORY,
+                executor_instances=SPARK_TRAIN_EXECUTOR_INSTANCES,
+                executor_cores=SPARK_TRAIN_EXECUTOR_CORES,
+                driver_memory_overhead=SPARK_TRAIN_DRIVER_MEMORY_OVERHEAD,
+                executor_memory_overhead=SPARK_TRAIN_EXECUTOR_MEMORY_OVERHEAD,
+                use_spark_node_selector=False,
             )
         ],
         service_account_name=SERVICE_ACCOUNT,

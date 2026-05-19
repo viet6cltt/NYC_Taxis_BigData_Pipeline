@@ -33,8 +33,8 @@ spec:
               value: "minioadmin"
             - name: MODEL_NAME
               value: "XGB_NYC_Fare"
-            - name: MODEL_ALIAS
-              value: "production"
+            - name: MODEL_STAGE
+              value: "Production"
           resources:
             requests:
               memory: "512Mi"
@@ -77,4 +77,3 @@ spec:
       port: 3000
       targetPort: 3000
       nodePort: 30004
-

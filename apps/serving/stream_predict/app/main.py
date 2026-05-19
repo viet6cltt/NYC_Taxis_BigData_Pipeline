@@ -14,8 +14,10 @@ from pyspark.sql import functions as F
 
 from app.config import (
     CHECKPOINT_LOCATION,
+    FEATURE_COLS,
     GOLD_PREDICTIONS_PATH,
     GOLD_ROUTE_ESTIMATES_PATH,
+    MAX_FILES_PER_TRIGGER,
     MINIO_ACCESS_KEY,
     MINIO_ENDPOINT,
     MINIO_SECRET_KEY,
@@ -25,7 +27,7 @@ from app.config import (
 )
 from app.feature_extractor import extract_features
 from app.model_loader import get_model_version, load_production_model
-from app.predictor import apply_predictions, build_output_schema
+from app.predictor import build_output_schema, make_predict_fn
 
 
 def build_spark_session() -> SparkSession:
@@ -54,6 +56,8 @@ def read_started_stream(spark: SparkSession):
     reader = spark.readStream.format("delta")
     if STARTING_VERSION:
         reader = reader.option("startingVersion", STARTING_VERSION)
+    if MAX_FILES_PER_TRIGGER:
+        reader = reader.option("maxFilesPerTrigger", MAX_FILES_PER_TRIGGER)
     return reader.load(SILVER_STARTED_PATH)
 
 
@@ -72,26 +76,35 @@ def main() -> None:
     started_df = read_started_stream(spark)
     feature_df = extract_features(started_df, route_estimates_df)
     out_schema = build_output_schema(feature_df.schema)
+    predict_fn = make_predict_fn(
+        spark.sparkContext.broadcast(model),
+        spark.sparkContext.broadcast(FEATURE_COLS),
+        spark.sparkContext.broadcast(model_version),
+    )
 
     def process_batch(batch_df, batch_id):
-        if batch_df.isEmpty():
-            return
+        cached_batch = batch_df.persist()
+        try:
+            if cached_batch.isEmpty():
+                return
 
-        row_count = batch_df.count()
-        print(f"[stream_predict] Batch {batch_id} - {row_count} rows")
-        predictions_df = (
-            apply_predictions(batch_df, model, model_version, out_schema)
-            .withColumn("prediction_timestamp", F.current_timestamp())
-        )
-        (
-            predictions_df
-            .write
-            .format("delta")
-            .mode("append")
-            .option("mergeSchema", "true")
-            .partitionBy("year_month")
-            .save(GOLD_PREDICTIONS_PATH)
-        )
+            row_count = cached_batch.count()
+            print(f"[stream_predict] Batch {batch_id} - {row_count} rows")
+            predictions_df = (
+                cached_batch.mapInPandas(predict_fn, schema=out_schema)
+                .withColumn("prediction_timestamp", F.current_timestamp())
+            )
+            (
+                predictions_df
+                .write
+                .format("delta")
+                .mode("append")
+                .option("mergeSchema", "true")
+                .partitionBy("year_month")
+                .save(GOLD_PREDICTIONS_PATH)
+            )
+        finally:
+            cached_batch.unpersist()
 
     query = (
         feature_df.writeStream

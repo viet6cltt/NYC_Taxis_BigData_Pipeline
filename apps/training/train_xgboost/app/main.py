@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 
 from app.config import MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY
+from app.benchmark import benchmark_job
 from app.reader import read_gold
 from app.trainer import train_and_log
 
@@ -32,8 +33,12 @@ def main() -> None:
     spark = build_spark_session()
 
     try:
-        gold_df = read_gold(spark)
-        train_and_log(gold_df)
+        with benchmark_job(
+            prefix="[benchmark][spark_training_job]",
+            job_name="train_xgboost",
+        ) as metrics:
+            gold_df = read_gold(spark)
+            metrics.update(train_and_log(gold_df))
         print("=== [train_xgboost] Done ===")
     finally:
         spark.stop()

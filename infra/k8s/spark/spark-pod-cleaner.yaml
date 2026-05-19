@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: spark-pod-cleaner
+  namespace: lakehouse
+  labels:
+    app: spark-pod-cleaner
+spec:
+  schedule: "5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 15
+      template:
+        metadata:
+          labels:
+            app: spark-pod-cleaner
+        spec:
+          serviceAccountName: spark-user
+          restartPolicy: Never
+          nodeSelector:
+            workload: spark
+          containers:
+            - name: spark-driver-cleaner
+              image: 10.148.0.2:5000/kubectl:v1.35.4
+              imagePullPolicy: IfNotPresent
+              command:
+                - kubectl
+              args:
+                - delete
+                - pod
+                - -n
+                - lakehouse
+                - -l
+                - spark-role=driver
+                - --field-selector=status.phase=Succeeded
+                - --ignore-not-found=true
+            - name: airflow-kpo-cleaner
+              image: 10.148.0.2:5000/kubectl:v1.35.4
+              imagePullPolicy: IfNotPresent
+              command:
+                - kubectl
+              args:
+                - delete
+                - pod
+                - -n
+                - lakehouse
+                - -l
+                - kubernetes_pod_operator=True
+                - --field-selector=status.phase=Succeeded
+                - --ignore-not-found=true

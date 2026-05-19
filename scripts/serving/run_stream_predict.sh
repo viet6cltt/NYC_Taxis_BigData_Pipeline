@@ -38,9 +38,18 @@ GOLD_PREDICTIONS_PATH="${GOLD_PREDICTIONS_PATH:-s3a://lakehouse/gold/ml/predicti
 CHECKPOINT_LOCATION="${CHECKPOINT_LOCATION:-s3a://lakehouse/_checkpoints/gold/ml/stream_predict}"
 TRIGGER_INTERVAL="${TRIGGER_INTERVAL:-30 seconds}"
 STARTING_VERSION="${STARTING_VERSION:-}"
-SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
+MAX_FILES_PER_TRIGGER="${MAX_FILES_PER_TRIGGER:-4}"
+SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-2g}"
+SPARK_DRIVER_MEMORY_OVERHEAD="${SPARK_DRIVER_MEMORY_OVERHEAD:-1g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-3g}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-4g}"
+SPARK_EXECUTOR_MEMORY_OVERHEAD="${SPARK_EXECUTOR_MEMORY_OVERHEAD:-1g}"
+SPARK_WAIT_APP_COMPLETION="${SPARK_WAIT_APP_COMPLETION:-true}"
+SPARK_DYNAMIC_ALLOCATION_ENABLED="${SPARK_DYNAMIC_ALLOCATION_ENABLED:-false}"
+SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED="${SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED:-true}"
+SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS:-1}"
+SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS:-2}"
+SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS:-$SPARK_EXECUTOR_INSTANCES}"
 N_LOCATION_CLUSTERS="${N_LOCATION_CLUSTERS:-5}"
 N_TEMPORAL_CLUSTERS="${N_TEMPORAL_CLUSTERS:-4}"
 
@@ -51,18 +60,36 @@ if [ -n "$STARTING_VERSION" ]; then
     starting_version_conf=(--conf "spark.kubernetes.driverEnv.STARTING_VERSION=$STARTING_VERSION")
 fi
 
+dynamic_allocation_conf=()
+if [ "$SPARK_DYNAMIC_ALLOCATION_ENABLED" = "true" ]; then
+    dynamic_allocation_conf=(
+        --conf "spark.dynamicAllocation.enabled=$SPARK_DYNAMIC_ALLOCATION_ENABLED"
+        --conf "spark.dynamicAllocation.shuffleTracking.enabled=$SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED"
+        --conf "spark.dynamicAllocation.minExecutors=$SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS"
+        --conf "spark.dynamicAllocation.maxExecutors=$SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS"
+        --conf "spark.dynamicAllocation.initialExecutors=$SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS"
+    )
+fi
+
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
     --deploy-mode cluster \
     --name nyc-taxi-stream-predict \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
+    --conf spark.kubernetes.driver.node.selector.workload=spark \
+    --conf spark.kubernetes.executor.node.selector.workload=spark \
     --conf spark.kubernetes.container.image="$IMAGE" \
     --conf spark.kubernetes.container.image.pullPolicy="$IMAGE_PULL_POLICY" \
+    --conf spark.kubernetes.submission.waitAppCompletion="$SPARK_WAIT_APP_COMPLETION" \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
     --conf spark.kubernetes.authenticate.caCertFile="$K8S_CA_CERT_FILE" \
     --conf spark.kubernetes.authenticate.submission.caCertFile="$K8S_CA_CERT_FILE" \
     --conf spark.kubernetes.authenticate.submission.oauthTokenFile="$K8S_SUBMISSION_TOKEN_FILE" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
+    --conf spark.ui.prometheus.enabled=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/scrape=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/path=/metrics/prometheus \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/port=4040 \
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.executorEnv.PYTHONPATH="/opt/spark/work-dir" \
@@ -78,6 +105,7 @@ fi
     --conf spark.kubernetes.driverEnv.GOLD_PREDICTIONS_PATH="$GOLD_PREDICTIONS_PATH" \
     --conf spark.kubernetes.driverEnv.CHECKPOINT_LOCATION="$CHECKPOINT_LOCATION" \
     --conf spark.kubernetes.driverEnv.TRIGGER_INTERVAL="$TRIGGER_INTERVAL" \
+    --conf spark.kubernetes.driverEnv.MAX_FILES_PER_TRIGGER="$MAX_FILES_PER_TRIGGER" \
     --conf spark.kubernetes.driverEnv.N_LOCATION_CLUSTERS="$N_LOCATION_CLUSTERS" \
     --conf spark.kubernetes.driverEnv.N_TEMPORAL_CLUSTERS="$N_TEMPORAL_CLUSTERS" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
@@ -91,9 +119,12 @@ fi
     --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
     \
     --conf spark.driver.memory="$SPARK_DRIVER_MEMORY" \
+    --conf spark.driver.memoryOverhead="$SPARK_DRIVER_MEMORY_OVERHEAD" \
     --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
+    --conf spark.executor.memoryOverhead="$SPARK_EXECUTOR_MEMORY_OVERHEAD" \
     --conf spark.sql.shuffle.partitions=4 \
     \
+    "${dynamic_allocation_conf[@]}" \
     "${starting_version_conf[@]}" \
     "$APP_FILE"

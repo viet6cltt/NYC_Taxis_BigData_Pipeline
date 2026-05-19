@@ -70,7 +70,7 @@ def _get_sklearn_model(spark_model):
     return sklearn_model
 
 
-def train_and_log(gold_df: DataFrame) -> None:
+def train_and_log(gold_df: DataFrame) -> dict:
     """
     Train XGBoost model on the Gold dataset and log everything to MLflow.
     Airflow retrain runs set AUTO_PROMOTE=false so the DAG can evaluate the
@@ -207,12 +207,25 @@ def train_and_log(gold_df: DataFrame) -> None:
 
     if not AUTO_PROMOTE:
         print("[train_xgboost] AUTO_PROMOTE=false; candidate remains unpromoted for Airflow gate.")
-        return
+        return {
+            "run_id": run_id,
+            "train_size": train_size,
+            "test_size": test_size,
+            "num_workers": num_workers,
+            "train_r2": train_metrics["r2"],
+            "train_rmse": train_metrics["rmse"],
+            "train_mae": train_metrics["mae"],
+            "test_r2": test_metrics["r2"],
+            "test_rmse": test_metrics["rmse"],
+            "test_mae": test_metrics["mae"],
+            "promoted": False,
+        }
 
     # -------------------------------------------------------------------
     # 6. Auto-promote to Production if R² meets threshold for manual runs
     # -------------------------------------------------------------------
     if test_metrics["r2"] >= PROMOTE_THRESHOLD_R2:
+        promoted = False
         client = mlflow.tracking.MlflowClient()
         # Get the latest version we just registered
         versions = client.get_latest_versions(MODEL_NAME, stages=["None"])
@@ -226,6 +239,22 @@ def train_and_log(gold_df: DataFrame) -> None:
             )
             print(f"[train_xgboost] Model v{latest_version} promoted to Production "
                   f"(R²={test_metrics['r2']:.4f} ≥ {PROMOTE_THRESHOLD_R2})")
+            promoted = True
     else:
+        promoted = False
         print(f"[train_xgboost] R²={test_metrics['r2']:.4f} below threshold "
               f"{PROMOTE_THRESHOLD_R2} — model NOT promoted to Production.")
+
+    return {
+        "run_id": run_id,
+        "train_size": train_size,
+        "test_size": test_size,
+        "num_workers": num_workers,
+        "train_r2": train_metrics["r2"],
+        "train_rmse": train_metrics["rmse"],
+        "train_mae": train_metrics["mae"],
+        "test_r2": test_metrics["r2"],
+        "test_rmse": test_metrics["rmse"],
+        "test_mae": test_metrics["mae"],
+        "promoted": promoted,
+    }
