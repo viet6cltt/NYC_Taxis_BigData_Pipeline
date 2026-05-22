@@ -27,6 +27,14 @@ K8S_API_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster
 K8S_MASTER="k8s://${K8S_API_SERVER}"
 NAMESPACE="lakehouse"
 SERVICE_ACCOUNT="spark-user"
+K8S_CA_CERT_FILE="${K8S_CA_CERT_FILE:-$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority}')}"
+if [ -z "$K8S_CA_CERT_FILE" ]; then
+    K8S_CA_CERT_FILE="/tmp/spark-k8s-ca.crt"
+    kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > "$K8S_CA_CERT_FILE"
+fi
+K8S_SUBMISSION_TOKEN_FILE="/tmp/spark-k8s-submission.token"
+kubectl create token "$SERVICE_ACCOUNT" -n "$NAMESPACE" > "$K8S_SUBMISSION_TOKEN_FILE"
+chmod 600 "$K8S_SUBMISSION_TOKEN_FILE"
 
 GOLD_JOB="${1:-features}"
 SILVER_COMPLETED_PATH="${SILVER_COMPLETED_PATH:-s3a://lakehouse/silver/nyc-taxi/trip_completed}"
@@ -43,11 +51,19 @@ MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-minioadmin}"
 
 # Image
 IMAGE="${REGISTRY:-localhost:5000}/nyc-taxi-feature-engineering:v1.0"
-APP_FILE="local:///opt/spark/work-dir/app/main.py"
+APP_FILE="${APP_FILE:-local:///opt/spark/work-dir/app/main.py}"
+SPARK_APP_NAME="${SPARK_APP_NAME:-nyc-taxi-gold-${GOLD_JOB}}"
 SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-1g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
 SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-2g}"
-SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-1}"
+SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-2}"
+SPARK_SHUFFLE_PARTITIONS="${SPARK_SHUFFLE_PARTITIONS:-6}"
+SPARK_DYNAMIC_ALLOCATION_ENABLED="${SPARK_DYNAMIC_ALLOCATION_ENABLED:-false}"
+SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED="${SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED:-true}"
+SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS:-1}"
+SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS:-3}"
+SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS:-$SPARK_EXECUTOR_INSTANCES}"
+BENCHMARK_METRICS_ENABLED="${BENCHMARK_METRICS_ENABLED:-true}"
 N_LOCATION_CLUSTERS="${N_LOCATION_CLUSTERS:-5}"
 N_TEMPORAL_CLUSTERS="${N_TEMPORAL_CLUSTERS:-4}"
 MIN_TRIP_DISTANCE="${MIN_TRIP_DISTANCE:-0.05}"
@@ -60,6 +76,15 @@ MAX_TOTAL_AMOUNT="${MAX_TOTAL_AMOUNT:-500.0}"
 MIN_AVG_SPEED_MPH="${MIN_AVG_SPEED_MPH:-1.0}"
 MAX_AVG_SPEED_MPH="${MAX_AVG_SPEED_MPH:-80.0}"
 MAX_PASSENGER_COUNT="${MAX_PASSENGER_COUNT:-6}"
+BENCHMARK_ACTION="${BENCHMARK_ACTION:-}"
+BENCHMARK_INPUT_PATH="${BENCHMARK_INPUT_PATH:-}"
+BENCHMARK_PARTITIONED_PATH="${BENCHMARK_PARTITIONED_PATH:-}"
+BENCHMARK_UNPARTITIONED_PATH="${BENCHMARK_UNPARTITIONED_PATH:-}"
+BENCHMARK_EXPECTED_YEAR="${BENCHMARK_EXPECTED_YEAR:-2024}"
+BENCHMARK_REQUIRE_FULL_YEAR="${BENCHMARK_REQUIRE_FULL_YEAR:-true}"
+BENCHMARK_FILTER_MONTH="${BENCHMARK_FILTER_MONTH:-2024-01}"
+BENCHMARK_FILTER_QUARTER="${BENCHMARK_FILTER_QUARTER:-2024-01,2024-02,2024-03}"
+BENCHMARK_PRUNING_TRIALS="${BENCHMARK_PRUNING_TRIALS:-3}"
 
 if [ ! -d "$SPARK_DIR" ]; then
     echo "--- Downloading Spark ${SPARK_VERSION} ---"
@@ -69,19 +94,38 @@ if [ ! -d "$SPARK_DIR" ]; then
     rm "${SPARK_DIR}.tgz"
 fi
 
-echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
+echo "--- Submitting Spark app=${SPARK_APP_NAME}, Gold ML job=${GOLD_JOB} to Kubernetes ---"
+echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES} cores, ${SPARK_EXECUTOR_MEMORY}"
+
+dynamic_allocation_conf=()
+if [ "$SPARK_DYNAMIC_ALLOCATION_ENABLED" = "true" ]; then
+    dynamic_allocation_conf=(
+        --conf "spark.dynamicAllocation.enabled=$SPARK_DYNAMIC_ALLOCATION_ENABLED"
+        --conf "spark.dynamicAllocation.shuffleTracking.enabled=$SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED"
+        --conf "spark.dynamicAllocation.minExecutors=$SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS"
+        --conf "spark.dynamicAllocation.maxExecutors=$SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS"
+        --conf "spark.dynamicAllocation.initialExecutors=$SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS"
+    )
+fi
 
 "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
     --deploy-mode cluster \
-    --name "nyc-taxi-gold-${GOLD_JOB}" \
+    --name "$SPARK_APP_NAME" \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
+    --conf spark.kubernetes.driver.node.selector.workload=spark \
+    --conf spark.kubernetes.executor.node.selector.workload=spark \
     --conf spark.kubernetes.container.image="$IMAGE" \
     --conf spark.kubernetes.container.image.pullPolicy=Always \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName="$SERVICE_ACCOUNT" \
-    --conf spark.kubernetes.authenticate.caCertFile="" \
-    --conf spark.kubernetes.authenticate.submission.caCertFile="" \
+    --conf spark.kubernetes.authenticate.caCertFile="$K8S_CA_CERT_FILE" \
+    --conf spark.kubernetes.authenticate.submission.caCertFile="$K8S_CA_CERT_FILE" \
+    --conf spark.kubernetes.authenticate.submission.oauthTokenFile="$K8S_SUBMISSION_TOKEN_FILE" \
     --conf spark.kubernetes.authenticate.trustServerCertificate=true \
+    --conf spark.ui.prometheus.enabled=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/scrape=true \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/path=/metrics/prometheus \
+    --conf spark.kubernetes.driver.annotation.prometheus.io/port=4040 \
     \
     --conf spark.kubernetes.driverEnv.PYTHONPATH="/opt/spark/work-dir" \
     --conf spark.executorEnv.PYTHONPATH="/opt/spark/work-dir" \
@@ -93,6 +137,7 @@ echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
     --conf spark.kubernetes.driverEnv.GOLD_PREDICTION_ACTUALS_PATH="$GOLD_PREDICTION_ACTUALS_PATH" \
     --conf spark.kubernetes.driverEnv.GOLD_MODEL_QUALITY_DAILY_PATH="$GOLD_MODEL_QUALITY_DAILY_PATH" \
     --conf spark.kubernetes.driverEnv.WRITE_MODE="$WRITE_MODE" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_METRICS_ENABLED="$BENCHMARK_METRICS_ENABLED" \
     --conf spark.kubernetes.driverEnv.N_LOCATION_CLUSTERS="$N_LOCATION_CLUSTERS" \
     --conf spark.kubernetes.driverEnv.N_TEMPORAL_CLUSTERS="$N_TEMPORAL_CLUSTERS" \
     --conf spark.kubernetes.driverEnv.MIN_TRIP_DISTANCE="$MIN_TRIP_DISTANCE" \
@@ -105,6 +150,15 @@ echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
     --conf spark.kubernetes.driverEnv.MIN_AVG_SPEED_MPH="$MIN_AVG_SPEED_MPH" \
     --conf spark.kubernetes.driverEnv.MAX_AVG_SPEED_MPH="$MAX_AVG_SPEED_MPH" \
     --conf spark.kubernetes.driverEnv.MAX_PASSENGER_COUNT="$MAX_PASSENGER_COUNT" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_ACTION="$BENCHMARK_ACTION" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_INPUT_PATH="$BENCHMARK_INPUT_PATH" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_PARTITIONED_PATH="$BENCHMARK_PARTITIONED_PATH" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_UNPARTITIONED_PATH="$BENCHMARK_UNPARTITIONED_PATH" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_EXPECTED_YEAR="$BENCHMARK_EXPECTED_YEAR" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_REQUIRE_FULL_YEAR="$BENCHMARK_REQUIRE_FULL_YEAR" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_FILTER_MONTH="$BENCHMARK_FILTER_MONTH" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_FILTER_QUARTER="$BENCHMARK_FILTER_QUARTER" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_PRUNING_TRIALS="$BENCHMARK_PRUNING_TRIALS" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
     --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
     \
@@ -119,7 +173,10 @@ echo "--- Submitting Gold ML job=${GOLD_JOB} to Kubernetes ---"
     --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
     --conf spark.executor.cores="$SPARK_EXECUTOR_CORES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
-    --conf spark.sql.shuffle.partitions=6 \
+    --conf spark.kubernetes.executor.request.cores="$SPARK_EXECUTOR_CORES" \
+    --conf spark.kubernetes.executor.limit.cores="$SPARK_EXECUTOR_CORES" \
+    --conf spark.sql.shuffle.partitions="$SPARK_SHUFFLE_PARTITIONS" \
     --conf spark.sql.adaptive.enabled=true \
     \
+    "${dynamic_allocation_conf[@]}" \
     "$APP_FILE"

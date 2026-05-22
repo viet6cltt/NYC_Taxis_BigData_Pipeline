@@ -1,0 +1,2 @@
+scenario,speed_multiplier,max_offsets_per_trigger,events_per_sec,rows_per_batch,avg_batch_duration_ms,p95_batch_duration_ms,processed_rows_per_sec,microbatches,notes
+low,1,500,0.69,7.68,6892.12,21013.0,1.35,25,logs=/home/viet-k3s-google/NYC_Taxis_BigData_Pipeline/benchmark_results/streaming_20260518T153226Z/low

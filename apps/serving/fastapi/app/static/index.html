@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TaxiOps Fare Desk</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Workspace navigation">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">TX</div>
+          <div>
+            <strong>TaxiOps</strong>
+            <span>NYC Fare Desk</span>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Primary">
+          <button class="nav-item active" type="button">
+            <i data-lucide="route"></i>
+            <span>Pricing</span>
+          </button>
+          <a class="nav-item link-item" href="/stream-demo">
+            <i data-lucide="activity"></i>
+            <span>Operations</span>
+          </a>
+          <button class="nav-item" type="button">
+            <i data-lucide="database"></i>
+            <span>Model Registry</span>
+          </button>
+          <a class="nav-item link-item" href="/docs" target="_blank" rel="noreferrer">
+            <i data-lucide="file-code-2"></i>
+            <span>API Docs</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-status">
+          <span class="status-dot" id="sidebar-status-dot"></span>
+          <div>
+            <strong id="sidebar-status">Checking service</strong>
+            <span id="sidebar-version">Model version pending</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Production Pricing</p>
+            <h1>Trip Fare Workspace</h1>
+          </div>
+          <div class="topbar-actions">
+            <div class="clock-block">
+              <span id="today-label">Today</span>
+              <strong id="time-label">--:-- UTC</strong>
+            </div>
+            <button class="ghost-button" id="refresh-health" type="button">
+              <i data-lucide="refresh-cw"></i>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="overview-grid" aria-label="Service summary">
+          <div class="summary-tile">
+            <span>Service</span>
+            <strong id="service-state">Pending</strong>
+          </div>
+          <div class="summary-tile">
+            <span>Model</span>
+            <strong id="model-name">XGB_NYC_Fare</strong>
+          </div>
+          <div class="summary-tile">
+            <span>Version</span>
+            <strong id="model-version">unknown</strong>
+          </div>
+          <div class="summary-tile">
+            <span>Last latency</span>
+            <strong id="last-latency">-- ms</strong>
+          </div>
+        </section>
+
+        <section class="workspace-grid">
+          <section class="panel trip-panel" aria-labelledby="trip-form-title">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Quote Builder</p>
+                <h2 id="trip-form-title">Trip details</h2>
+              </div>
+              <button class="icon-button" id="reset-form" type="button" title="Reset form" aria-label="Reset form">
+                <i data-lucide="rotate-ccw"></i>
+              </button>
+            </div>
+
+            <div class="preset-row" aria-label="Route presets">
+              <button type="button" class="preset-chip" data-preset="airport">JFK to Times Sq</button>
+              <button type="button" class="preset-chip" data-preset="midtown">Penn to UES</button>
+              <button type="button" class="preset-chip" data-preset="downtown">SoHo to FiDi</button>
+            </div>
+
+            <form id="prediction-form" class="trip-form">
+              <div class="field-grid">
+                <label class="field">
+                  <span>Passengers</span>
+                  <input id="passenger_count" name="passenger_count" type="number" min="1" max="6" step="1" value="2" required />
+                </label>
+
+                <label class="field">
+                  <span>Pickup hour</span>
+                  <div class="range-field">
+                    <input id="pickup_hour" name="pickup_hour" type="range" min="0" max="23" step="1" value="14" />
+                    <strong id="pickup-hour-label">14:00</strong>
+                  </div>
+                </label>
+
+                <label class="field">
+                  <span>Day</span>
+                  <select id="pickup_day_of_week" name="pickup_day_of_week">
+                    <option value="0">Monday</option>
+                    <option value="1">Tuesday</option>
+                    <option value="2" selected>Wednesday</option>
+                    <option value="3">Thursday</option>
+                    <option value="4">Friday</option>
+                    <option value="5">Saturday</option>
+                    <option value="6">Sunday</option>
+                  </select>
+                </label>
+              </div>
+              <input id="estimated_trip_distance" name="estimated_trip_distance" type="hidden" value="3.5" />
+              <input id="duration_minutes" name="duration_minutes" type="hidden" value="15" />
+
+              <div class="route-fields">
+                <label class="field">
+                  <span>Pickup zone</span>
+                  <select id="pulocation_id" name="pulocation_id"></select>
+                </label>
+
+                <button class="swap-button" id="swap-zones" type="button" title="Swap zones" aria-label="Swap zones">
+                  <i data-lucide="arrow-left-right"></i>
+                </button>
+
+                <label class="field">
+                  <span>Dropoff zone</span>
+                  <select id="dolocation_id" name="dolocation_id"></select>
+                </label>
+              </div>
+
+              <div class="location-picker">
+                <div class="location-picker-toolbar">
+                  <div class="segmented-control" aria-label="Map selection target">
+                    <button class="active" id="map-mode-pickup" type="button">Pickup</button>
+                    <button id="map-mode-dropoff" type="button">Dropoff</button>
+                  </div>
+                  <div class="route-estimate-readout">
+                    <span>Route estimate</span>
+                    <strong id="route-estimate-readout">3.5 mi / 15 min</strong>
+                  </div>
+                  <div class="selected-route">
+                    <span>PU</span>
+                    <strong id="selected-pickup-zone">Midtown Center</strong>
+                    <span>DO</span>
+                    <strong id="selected-dropoff-zone">Upper East Side North</strong>
+                  </div>
+                </div>
+                <div class="taxi-zone-map-wrap">
+                  <svg id="taxi-zone-map" class="taxi-zone-map" viewBox="0 0 920 620" role="img" aria-label="NYC taxi zone selector"></svg>
+                  <div class="map-empty" id="map-empty">Loading NYC taxi zone map</div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button class="primary-button" type="submit">
+                  <i data-lucide="calculator"></i>
+                  <span>Estimate fare</span>
+                </button>
+                <p id="form-message" role="status" aria-live="polite"></p>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel result-panel" aria-labelledby="result-title">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Live Quote</p>
+                <h2 id="result-title">Fare estimate</h2>
+              </div>
+              <span class="quote-badge" id="quote-badge">Ready</span>
+            </div>
+
+            <div class="fare-readout">
+              <span id="fare-currency">$</span>
+              <strong id="predicted-fare">--.--</strong>
+            </div>
+            <p class="fare-caption" id="fare-caption">Awaiting trip details</p>
+
+            <div class="route-map" aria-label="Route map preview">
+              <canvas id="route-canvas"></canvas>
+              <div class="route-label pickup">
+                <span>PU</span>
+                <strong id="pickup-zone-name">Midtown Center</strong>
+              </div>
+              <div class="route-label dropoff">
+                <span>DO</span>
+                <strong id="dropoff-zone-name">Upper East Side North</strong>
+              </div>
+            </div>
+
+            <div class="signal-list" aria-label="Trip signals">
+              <div>
+                <span>Speed</span>
+                <strong id="speed-signal">14.0 mph</strong>
+              </div>
+              <div>
+                <span>Route delta</span>
+                <strong id="zone-delta">75 zones</strong>
+              </div>
+              <div>
+                <span>Demand band</span>
+                <strong id="demand-band">Standard</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel history-panel" aria-labelledby="history-title">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Session Log</p>
+                <h2 id="history-title">Recent estimates</h2>
+              </div>
+              <button class="ghost-button compact" id="clear-history" type="button">
+                <i data-lucide="trash-2"></i>
+                <span>Clear</span>
+              </button>
+            </div>
+
+            <div class="history-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Route</th>
+                    <th>Trip</th>
+                    <th>Fare</th>
+                  </tr>
+                </thead>
+                <tbody id="history-body">
+                  <tr class="empty-row">
+                    <td colspan="4">No estimates yet</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

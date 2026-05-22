@@ -15,6 +15,7 @@ GOLD_PREDICTIONS_PATH = os.getenv("GOLD_PREDICTIONS_PATH", "s3a://lakehouse/gold
 # App
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("APP_PORT", "8000"))
+LOAD_MODEL_ON_STARTUP = os.getenv("LOAD_MODEL_ON_STARTUP", "true").lower() not in {"0", "false", "no"}
 
 # Feature helper settings. Keep defaults aligned with feature_engineering.
 N_LOCATION_CLUSTERS = int(os.getenv("N_LOCATION_CLUSTERS", "5"))

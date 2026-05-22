@@ -27,7 +27,7 @@ CHECKPOINT_LOCATION = os.getenv(
     "CHECKPOINT_LOCATION",
     "s3a://lakehouse/_checkpoints/gold/ml/stream_predict",
 )
-STARTING_VERSION = os.getenv("STARTING_VERSION")
+STARTING_VERSION = os.getenv("STARTING_VERSION", "").strip()
 
 # MLflow
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.mlflow.svc.cluster.local:5000")
@@ -36,6 +36,8 @@ MODEL_STAGE         = os.getenv("MODEL_STAGE",          "Production")
 
 # Streaming
 TRIGGER_INTERVAL = os.getenv("TRIGGER_INTERVAL", "30 seconds")
+MAX_FILES_PER_TRIGGER = os.getenv("MAX_FILES_PER_TRIGGER", "8").strip()
+PREDICTION_LOG_SAMPLE_ROWS = max(0, int(os.getenv("PREDICTION_LOG_SAMPLE_ROWS", "10")))
 
 # Feature helper settings. Keep defaults aligned with feature_engineering.
 N_LOCATION_CLUSTERS = int(os.getenv("N_LOCATION_CLUSTERS", "5"))

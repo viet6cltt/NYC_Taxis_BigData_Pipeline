@@ -12,6 +12,10 @@ FEATURE_FLAGS = {
     "DASHBOARD_CROSS_FILTERS": True,
 }
 
+# Local-only MCP settings for AI assistants.
+MCP_AUTH_ENABLED = False
+MCP_DEV_USERNAME = "admin"
+
 CACHE_CONFIG = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 300}
 ROW_LIMIT = 100000
 SQLLAB_TIMEOUT = 300

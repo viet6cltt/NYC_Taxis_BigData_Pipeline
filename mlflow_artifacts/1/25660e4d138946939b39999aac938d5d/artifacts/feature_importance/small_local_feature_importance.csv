@@ -1,0 +1,15 @@
+feature,importance
+estimated_trip_distance,0.56970775
+estimated_trip_duration_seconds,0.231376
+estimated_speed,0.08705543
+distance_manhattan,0.043329794
+passenger_count,0.025110772
+location_cluster,0.021782748
+pickup_hour,0.016593555
+hour_sin,0.005043961
+pickup_day_of_week,0.0
+is_weekend,0.0
+hour_cos,0.0
+day_sin,0.0
+day_cos,0.0
+temporal_cluster,0.0

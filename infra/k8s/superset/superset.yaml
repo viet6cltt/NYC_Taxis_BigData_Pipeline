@@ -6,7 +6,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres-superset
-  namespace: lakehouse
+  namespace: serving
   labels:
     app: postgres-superset
 spec:
@@ -61,7 +61,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres-superset
-  namespace: lakehouse
+  namespace: serving
 spec:
   selector:
     app: postgres-superset
@@ -79,7 +79,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: superset-config
-  namespace: lakehouse
+  namespace: serving
 data:
   superset_config.py: |
     import os
@@ -96,6 +96,11 @@ data:
     # Cho phép tất cả origins (dev mode)
     WTF_CSRF_ENABLED = False
     TALISMAN_ENABLED = False
+
+    # MCP dev mode: mọi request MCP chạy dưới user admin.
+    # Chỉ expose ra Internet khi firewall đã giới hạn IP được phép truy cập.
+    MCP_AUTH_ENABLED = False
+    MCP_DEV_USERNAME = "admin"
 
     # Feature flags
     FEATURE_FLAGS = {
@@ -128,7 +133,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: superset
-  namespace: lakehouse
+  namespace: serving
   labels:
     app: superset
     component: bi-dashboard
@@ -160,7 +165,7 @@ spec:
 
         # Bước 2: Chạy db upgrade + tạo admin user
         - name: superset-init
-          image: apache/superset:4.1.1
+          image: 10.148.0.2:5000/nyc-taxi-superset-ai:v1.0
           imagePullPolicy: IfNotPresent
           env:
             - name: SUPERSET_CONFIG_PATH
@@ -174,9 +179,6 @@ spec:
             - -c
             - |
               set -e
-              echo "[init] Installing Python database drivers..."
-              pip install --quiet psycopg2-binary
-
               echo "[init] Running database migrations..."
               superset db upgrade
 
@@ -199,7 +201,7 @@ spec:
 
       containers:
         - name: superset
-          image: apache/superset:4.1.1
+          image: 10.148.0.2:5000/nyc-taxi-superset-ai:v1.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8088
@@ -213,16 +215,13 @@ spec:
               value: /app
             # Trino connection info (dùng trong setup script)
             - name: TRINO_HOST
-              value: "trino.lakehouse.svc.cluster.local"
+              value: "trino.serving.svc.cluster.local"
             - name: TRINO_PORT
               value: "8080"
           command:
             - /bin/bash
             - -c
             - |
-              # Cài thêm database drivers nếu chưa có
-              pip install --quiet psycopg2-binary trino sqlalchemy-trino
-              # Khởi động Superset
               superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger
           volumeMounts:
             - name: superset-config
@@ -230,8 +229,8 @@ spec:
               subPath: superset_config.py
           resources:
             requests:
-              memory: "1Gi"
-              cpu: "500m"
+              memory: "768Mi"
+              cpu: "100m"
             limits:
               memory: "2Gi"
               cpu: "1500m"
@@ -261,7 +260,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: superset
-  namespace: lakehouse
+  namespace: serving
 spec:
   selector:
     app: superset
@@ -276,7 +275,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: superset-nodeport
-  namespace: lakehouse
+  namespace: serving
 spec:
   type: NodePort
   selector:
@@ -289,6 +288,120 @@ spec:
 
 ---
 # ============================================================
+# Superset MCP — bridge cho AI assistants
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: superset-mcp
+  namespace: serving
+  labels:
+    app: superset-mcp
+    component: bi-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: superset-mcp
+  template:
+    metadata:
+      labels:
+        app: superset-mcp
+        component: bi-mcp
+    spec:
+      initContainers:
+        - name: wait-for-superset
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Superset on port 8088..."
+              until nc -z superset 8088; do
+                echo "  superset not ready, retrying in 5s..."
+                sleep 5
+              done
+              echo "Superset is ready!"
+      containers:
+        - name: superset-mcp
+          image: 10.148.0.2:5000/nyc-taxi-superset-ai:v1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5008
+              name: mcp
+          env:
+            - name: SUPERSET_CONFIG_PATH
+              value: /app/superset_config.py
+            - name: SUPERSET_SECRET_KEY
+              value: "nyc-taxi-superset-secret-2024-change-me"
+            - name: PYTHONPATH
+              value: /app
+          command:
+            - /app/.venv/bin/superset
+            - mcp
+            - run
+            - --host
+            - 0.0.0.0
+            - --port
+            - "5008"
+          volumeMounts:
+            - name: superset-config
+              mountPath: /app/superset_config.py
+              subPath: superset_config.py
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "50m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          readinessProbe:
+            tcpSocket:
+              port: 5008
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 5008
+            initialDelaySeconds: 60
+            periodSeconds: 20
+      volumes:
+        - name: superset-config
+          configMap:
+            name: superset-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: superset-mcp
+  namespace: serving
+spec:
+  selector:
+    app: superset-mcp
+  ports:
+    - name: mcp
+      port: 5008
+      targetPort: 5008
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: superset-mcp-nodeport
+  namespace: serving
+spec:
+  type: NodePort
+  selector:
+    app: superset-mcp
+  ports:
+    - name: mcp
+      port: 5008
+      targetPort: 5008
+      nodePort: 30058
+
+---
+# ============================================================
 # Job: Thêm Trino database connection vào Superset
 # Chạy sau khi Superset đã sẵn sàng
 # ============================================================
@@ -296,7 +409,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: superset-add-trino-db
-  namespace: lakehouse
+  namespace: serving
   labels:
     app: superset-add-trino-db
 spec:
@@ -324,7 +437,7 @@ spec:
               echo "Superset is ready!"
       containers:
         - name: add-trino-connection
-          image: apache/superset:4.1.1
+          image: 10.148.0.2:5000/nyc-taxi-superset-ai:v1.0
           imagePullPolicy: IfNotPresent
           env:
             - name: SUPERSET_CONFIG_PATH
@@ -338,9 +451,6 @@ spec:
             - -c
             - |
               set -e
-
-              # Cài database drivers
-              pip install --quiet psycopg2-binary trino sqlalchemy-trino
 
               python3 << 'PYEOF'
               import os
@@ -409,7 +519,7 @@ spec:
               # 4. Tạo Trino database connection
               print("[4] Creating Trino database connection...")
               # SQLAlchemy URI cho Trino: trino://<user>@<host>:<port>/<catalog>
-              trino_uri = "trino://trino@trino.lakehouse.svc.cluster.local:8080/delta"
+              trino_uri = "trino://trino@trino.serving.svc.cluster.local:8080/delta"
 
               db_payload = {
                   "database_name": "Trino - NYC Taxi Lakehouse",

@@ -1,17 +1,19 @@
-from pyspark.sql import SparkSession
 import os
+
+from pyspark.sql import SparkSession
+
+from app.benchmark import benchmark_job
 from app.config import (
     INPUT_PATH,
-    OUTPUT_PATH,
-    MINIO_ENDPOINT,
     MINIO_ACCESS_KEY,
+    MINIO_ENDPOINT,
     MINIO_SECRET_KEY,
+    OUTPUT_PATH,
     YEAR,
 )
 from app.transform import transform
 from app.writer import write_to_bronze
-from app.config import INPUT_PATH, OUTPUT_PATH, MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY
-from app.transform import transform
+
 
 def resolve_input_path(base_input_path: str, year: str) -> str:
     return os.path.join(base_input_path, year)
@@ -55,11 +57,19 @@ def main():
     spark = build_spark_session()
 
     try:
-        raw_df = spark.read.parquet(input_path)
-        bronze_df = transform(raw_df)
-        
-        # Write the transformed data to the bronze layer
-        write_to_bronze(bronze_df, OUTPUT_PATH)
+        with benchmark_job(
+            prefix="[benchmark][spark_batch_job]",
+            job_name="historical_to_bronze",
+            extra={
+                "year": YEAR,
+                "input_path": input_path,
+                "output_path": OUTPUT_PATH,
+            },
+        ) as metrics:
+            raw_df = spark.read.parquet(input_path)
+            bronze_df = transform(raw_df)
+            write_to_bronze(bronze_df, OUTPUT_PATH)
+            metrics["output_path"] = OUTPUT_PATH
         
     finally:
         spark.stop()

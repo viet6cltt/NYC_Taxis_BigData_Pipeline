@@ -16,7 +16,7 @@ kubectl apply -f infra/k8s/superset/superset-advanced.yaml
 ## 📡 Port-forwarding & Access
 ```bash
 # Port-forward to localhost
-kubectl port-forward -n lakehouse svc/superset 8088:8088 &
+kubectl port-forward -n serving svc/superset 8088:8088 &
 
 # Or use NodePort (http://<node-ip>:30088)
 kubectl get nodes -o wide
@@ -45,7 +45,7 @@ Password: admin
 ### Option 2: Manual Connection
 ```
 Database Name: trino
-SQLAlchemy URI: trino://trino.lakehouse.svc.cluster.local:8080/delta
+SQLAlchemy URI: trino://trino.serving.svc.cluster.local:8080/delta
 Engine Parameters: {}
 ```
 
@@ -69,7 +69,7 @@ SHOW TABLES FROM delta.silver_nyc_taxi
 ## 🔧 Admin Commands
 ```bash
 # SSH into Superset container
-kubectl exec -it -n lakehouse deployment/superset -- bash
+kubectl exec -it -n serving deployment/superset -- bash
 
 # Change admin password
 superset set-password admin NEW_PASSWORD
@@ -90,31 +90,31 @@ superset fab grant-role --user=newuser --role=Admin
 SQLALCHEMY_DATABASE_URI: "postgresql://postgres:postgres@postgres-superset:5432/superset"
 SUPERSET_SECRET_KEY: "your-secret-key-change-in-production"
 REDIS_HOST: "redis-superset"  # (if using advanced deployment)
-TRINO_HOST: "trino.lakehouse.svc.cluster.local"
+TRINO_HOST: "trino.serving.svc.cluster.local"
 TRINO_PORT: "8080"
 ```
 
 ## 🐛 Troubleshooting
 ```bash
 # Check pod status
-kubectl get pods -n lakehouse -l app=superset
+kubectl get pods -n serving -l app=superset
 
 # View logs
-kubectl logs -n lakehouse -l app=superset
+kubectl logs -n serving -l app=superset
 
 # View init job logs
-kubectl logs -n lakehouse job/superset-add-trino-db
+kubectl logs -n serving job/superset-add-trino-db
 
 # Check if Trino is reachable
-kubectl exec -it -n lakehouse deployment/superset -- \
-  curl http://trino.lakehouse.svc.cluster.local:8080/v1/info
+kubectl exec -it -n serving deployment/superset -- \
+  curl http://trino.serving.svc.cluster.local:8080/v1/info
 
 # Check PostgreSQL connection
-kubectl exec -it -n lakehouse deployment/postgres-superset -- \
+kubectl exec -it -n serving deployment/postgres-superset -- \
   psql -U postgres -d superset -c "SELECT 1"
 
 # Restart Superset
-kubectl rollout restart deployment/superset -n lakehouse
+kubectl rollout restart deployment/superset -n serving
 ```
 
 ## 🔐 Production Checklist
@@ -157,8 +157,8 @@ kubectl rollout restart deployment/superset -n lakehouse
 kubectl delete -f infra/k8s/superset/superset.yaml
 
 # Delete namespace (removes all resources)
-kubectl delete namespace lakehouse
+kubectl delete namespace serving
 
 # Clean up resources
-kubectl delete pvc --all -n lakehouse
+kubectl delete pvc --all -n serving
 ```

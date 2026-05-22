@@ -5,7 +5,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: hive-tables-init
-  namespace: lakehouse
+  namespace: serving
   labels:
     app: hive-tables-init
 spec:

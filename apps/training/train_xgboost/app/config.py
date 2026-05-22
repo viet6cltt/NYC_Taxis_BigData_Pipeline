@@ -18,13 +18,37 @@ MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow.mlops.svc.
 EXPERIMENT_NAME     = os.getenv("EXPERIMENT_NAME", "NYC_Taxi_Fare_Prediction")
 MODEL_NAME          = os.getenv("MODEL_NAME", "XGB_NYC_Fare")
 
+
+def _as_bool(value: str, default: bool = False) -> bool:
+    normalized = (value or "").strip().lower()
+    if not normalized:
+        return default
+    return normalized not in {"0", "false", "no", "off"}
+
 # Training
 TEST_SIZE      = float(os.getenv("TEST_SIZE", "0.2"))
 RANDOM_STATE   = int(os.getenv("RANDOM_STATE", "42"))
 PROMOTE_THRESHOLD_R2 = float(os.getenv("PROMOTE_THRESHOLD_R2", "0.7"))
+AUTO_PROMOTE = _as_bool(os.getenv("AUTO_PROMOTE", "true"), default=True)
 XGB_NUM_WORKERS = int(os.getenv("XGB_NUM_WORKERS", "2"))
+XGB_MAX_TRAIN_ROWS = int(os.getenv("XGB_MAX_TRAIN_ROWS", "0"))
 SPLIT_STRATEGY = os.getenv("SPLIT_STRATEGY", "random").strip().lower()
 TIME_SPLIT_MONTH = os.getenv("TIME_SPLIT_MONTH", "2024-11")
+
+# Optional orchestration metadata. Airflow passes these so the retrain DAG can
+# find the exact candidate run/model version it submitted.
+MLFLOW_RUN_TAGS = {
+    key: value
+    for key, value in {
+        "airflow_dag_id": os.getenv("AIRFLOW_DAG_ID"),
+        "airflow_run_id": os.getenv("AIRFLOW_RUN_ID"),
+        "airflow_task_id": os.getenv("AIRFLOW_TASK_ID"),
+        "airflow_data_interval_start": os.getenv("AIRFLOW_DATA_INTERVAL_START"),
+        "airflow_data_interval_end": os.getenv("AIRFLOW_DATA_INTERVAL_END"),
+        "training_pipeline": os.getenv("TRAINING_PIPELINE", "manual"),
+    }.items()
+    if value
+}
 
 # Features used (must match Gold schema from feature_engineering/app/transform.py)
 FEATURE_COLS = [
@@ -52,6 +76,7 @@ XGB_PARAMS = {
     "learning_rate":   float(os.getenv("XGB_LEARNING_RATE", "0.1")),
     "subsample":       float(os.getenv("XGB_SUBSAMPLE", "0.8")),
     "colsample_bytree": float(os.getenv("XGB_COLSAMPLE", "0.8")),
+    "max_bin":         int(os.getenv("XGB_MAX_BIN", "128")),
     "random_state":    RANDOM_STATE,
     "eval_metric":     "rmse",
     "objective":       "reg:squarederror",

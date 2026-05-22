@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TaxiOps Streaming Monitor</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
+    <script src="/static/stream-demo.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Workspace navigation">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">TX</div>
+          <div>
+            <strong>TaxiOps</strong>
+            <span>Streaming Ops</span>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Primary">
+          <a class="nav-item link-item" href="/">
+            <i data-lucide="route"></i>
+            <span>Pricing</span>
+          </a>
+          <button class="nav-item active" type="button">
+            <i data-lucide="activity"></i>
+            <span>Operations</span>
+          </button>
+          <a class="nav-item link-item" href="http://localhost:5000" target="_blank" rel="noreferrer">
+            <i data-lucide="database"></i>
+            <span>MLflow</span>
+          </a>
+          <a class="nav-item link-item" href="/docs" target="_blank" rel="noreferrer">
+            <i data-lucide="file-code-2"></i>
+            <span>API Docs</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-status">
+          <span class="status-dot ok" id="stream-status-dot"></span>
+          <div>
+            <strong id="stream-status">Loading stream log</strong>
+            <span id="stream-source">Waiting for data</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Production Backend Demo</p>
+            <h1>Streaming Model Monitor</h1>
+          </div>
+          <div class="topbar-actions">
+            <a class="ghost-button" href="/static/stream-demo.html" target="_blank" rel="noreferrer">
+              <i data-lucide="external-link"></i>
+              <span>Open static</span>
+            </a>
+            <button class="ghost-button" id="refresh-stream" type="button">
+              <i data-lucide="refresh-cw"></i>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="overview-grid" aria-label="Streaming summary">
+          <div class="summary-tile">
+            <span>Predictions</span>
+            <strong id="metric-count">--</strong>
+          </div>
+          <div class="summary-tile">
+            <span>Model version</span>
+            <strong id="metric-model">--</strong>
+          </div>
+          <div class="summary-tile">
+            <span>MAE</span>
+            <strong id="metric-mae">--</strong>
+          </div>
+          <div class="summary-tile">
+            <span>R2</span>
+            <strong id="metric-r2">--</strong>
+          </div>
+        </section>
+
+        <section class="stream-grid">
+          <section class="panel stream-live-panel" aria-labelledby="live-title">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Micro-Batches</p>
+                <h2 id="live-title">Backend event replay</h2>
+              </div>
+              <div class="stream-controls">
+                <button class="primary-button compact" id="play-stream" type="button">
+                  <i data-lucide="play"></i>
+                  <span>Replay</span>
+                </button>
+                <button class="ghost-button compact" id="pause-stream" type="button">
+                  <i data-lucide="pause"></i>
+                  <span>Pause</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="stream-pipeline" aria-label="Backend pipeline">
+              <div>
+                <i data-lucide="radio-tower"></i>
+                <span>trip_started</span>
+              </div>
+              <div>
+                <i data-lucide="git-merge"></i>
+                <span>route lookup</span>
+              </div>
+              <div>
+                <i data-lucide="brain-circuit"></i>
+                <span>MLflow model</span>
+              </div>
+              <div>
+                <i data-lucide="database-zap"></i>
+                <span>prediction log</span>
+              </div>
+            </div>
+
+            <div class="live-readout">
+              <div>
+                <span>Current batch</span>
+                <strong id="current-batch">--</strong>
+              </div>
+              <div>
+                <span>Last route</span>
+                <strong id="last-route">--</strong>
+              </div>
+              <div>
+                <span>Last fare</span>
+                <strong id="last-fare">--</strong>
+              </div>
+            </div>
+
+            <div class="event-feed" id="event-feed" aria-live="polite">
+              <div class="feed-empty">No stream events loaded yet</div>
+            </div>
+          </section>
+
+          <section class="panel stream-quality-panel" aria-labelledby="quality-title">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Model Quality</p>
+                <h2 id="quality-title">Prediction vs actual</h2>
+              </div>
+              <span class="quote-badge" id="quality-badge">Pending</span>
+            </div>
+
+            <div class="quality-bars">
+              <div>
+                <span>RMSE</span>
+                <strong id="quality-rmse">--</strong>
+                <div class="bar-track"><span id="rmse-bar"></span></div>
+              </div>
+              <div>
+                <span>Average fare</span>
+                <strong id="quality-avg">--</strong>
+                <div class="bar-track"><span id="avg-bar"></span></div>
+              </div>
+              <div>
+                <span>Live status</span>
+                <strong id="quality-status">Waiting</strong>
+                <div class="bar-track"><span id="status-bar"></span></div>
+              </div>
+            </div>
+
+            <div class="stream-note">
+              <i data-lucide="info"></i>
+              <p>This view replays saved backend predictions so the production streaming flow is visible without opening terminal logs.</p>
+            </div>
+          </section>
+
+          <section class="panel stream-table-panel" aria-labelledby="prediction-table-title">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Prediction Log</p>
+                <h2 id="prediction-table-title">Recent backend outputs</h2>
+              </div>
+              <a class="ghost-button compact" href="/stream-demo/data" target="_blank" rel="noreferrer">
+                <i data-lucide="braces"></i>
+                <span>JSON</span>
+              </a>
+            </div>
+
+            <div class="history-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Pickup</th>
+                    <th>Route</th>
+                    <th>Estimate</th>
+                    <th>Predicted</th>
+                    <th>Actual</th>
+                    <th>Error</th>
+                  </tr>
+                </thead>
+                <tbody id="prediction-table-body">
+                  <tr class="empty-row">
+                    <td colspan="6">No predictions loaded</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

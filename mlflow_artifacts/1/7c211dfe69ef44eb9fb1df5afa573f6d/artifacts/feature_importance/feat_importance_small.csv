@@ -1,0 +1,15 @@
+feature,importance
+trip_distance,0.63997424
+trip_duration_seconds,0.17982695
+speed,0.06294765
+temporal_cluster,0.023415005
+pickup_hour,0.023280932
+distance_manhattan,0.022299081
+hour_cos,0.013866895
+hour_sin,0.012553147
+location_cluster,0.012495534
+passenger_count,0.0093406215
+pickup_day_of_week,0.0
+is_weekend,0.0
+day_sin,0.0
+day_cos,0.0

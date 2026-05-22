@@ -1,0 +1,245 @@
+--- Đã tìm thấy Spark tại /home/viet-k3s-google/Downloads/spark-4.1.1-bin-hadoop3 ---
+--- Đang submit started streaming-to-bronze job lên Kubernetes ---
+WARNING: Using incubator modules: jdk.incubator.vector
+26/05/18 15:45:16 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/05/18 15:45:16 INFO SparkKubernetesClientFactory: Auto-configuring K8S client using current context from users K8S config file
+26/05/18 15:45:17 INFO KerberosConfDriverFeatureStep: You have not specified a krb5.conf file locally or via a ConfigMap. Make sure that you have the krb5.conf locally on the driver image.
+26/05/18 15:45:17 INFO SslUtils: Default SSL endpoint verification has been disabled:  -Dio.netty.handler.ssl.defaultEndpointVerificationAlgorithm="NONE"
+26/05/18 15:45:19 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-7e1bb69e3bc35180-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-23525d37e3ea48b4b5094ca5abe7d725, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 053e04b8-bf2f-4d20-9617-56648239ec29
+	 creation time: 2026-05-18T15:45:17Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-jvwq2
+	 node name: training
+	 start time: 2026-05-18T15:45:17Z
+	 phase: Pending
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: waiting
+		 pending reason: ContainerCreating
+26/05/18 15:45:19 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-7e1bb69e3bc35180-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-23525d37e3ea48b4b5094ca5abe7d725, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 053e04b8-bf2f-4d20-9617-56648239ec29
+	 creation time: 2026-05-18T15:45:17Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-jvwq2
+	 node name: training
+	 start time: 2026-05-18T15:45:17Z
+	 phase: Pending
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: waiting
+		 pending reason: ContainerCreating
+26/05/18 15:45:19 INFO LoggingPodStatusWatcherImpl: Waiting for application nyc-taxi-started-to-bronze with application ID spark-23525d37e3ea48b4b5094ca5abe7d725 and submission ID lakehouse:nyc-taxi-started-to-bronze-7e1bb69e3bc35180-driver to finish...
+26/05/18 15:45:19 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-7e1bb69e3bc35180-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-23525d37e3ea48b4b5094ca5abe7d725, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 053e04b8-bf2f-4d20-9617-56648239ec29
+	 creation time: 2026-05-18T15:45:17Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-jvwq2
+	 node name: training
+	 start time: 2026-05-18T15:45:17Z
+	 phase: Running
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: running
+		 container started at: 2026-05-18T15:45:19Z
+26/05/18 15:45:20 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:21 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:22 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:23 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:24 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:25 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:26 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:27 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:28 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:29 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:30 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:31 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:32 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:33 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:34 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:35 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:36 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:37 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:38 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:39 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:40 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:41 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:42 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:43 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:44 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:45 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:46 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:47 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:48 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:49 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:50 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:51 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:52 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:53 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:54 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:55 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:56 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:57 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:58 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:45:59 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:00 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:01 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:02 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:03 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:04 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:05 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:06 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:07 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:08 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:09 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:10 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:11 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:12 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:13 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:14 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:15 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:16 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:17 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:18 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:19 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:20 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:21 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:22 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:23 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:24 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:25 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:26 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:27 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:28 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:29 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:30 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:31 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:32 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:33 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:34 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:35 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:36 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:37 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:38 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:39 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:40 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:41 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:42 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:43 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:44 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:45 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:46 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:47 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:48 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:49 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:50 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:51 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:52 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:53 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:54 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:55 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:56 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:57 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:58 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:46:59 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:00 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:01 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:02 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:03 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:04 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:05 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:06 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:07 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:08 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:09 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:10 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:11 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:12 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:13 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:14 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:15 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:16 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:17 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:18 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:19 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:20 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:21 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:22 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:22 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-7e1bb69e3bc35180-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-23525d37e3ea48b4b5094ca5abe7d725, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 053e04b8-bf2f-4d20-9617-56648239ec29
+	 creation time: 2026-05-18T15:45:17Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-jvwq2
+	 node name: training
+	 start time: 2026-05-18T15:45:17Z
+	 phase: Running
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: running
+		 container started at: 2026-05-18T15:45:19Z
+26/05/18 15:47:22 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-7e1bb69e3bc35180-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-23525d37e3ea48b4b5094ca5abe7d725, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 053e04b8-bf2f-4d20-9617-56648239ec29
+	 creation time: 2026-05-18T15:45:17Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-jvwq2
+	 node name: training
+	 start time: 2026-05-18T15:45:17Z
+	 phase: Running
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: running
+		 container started at: 2026-05-18T15:45:19Z
+26/05/18 15:47:23 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:24 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Running)
+26/05/18 15:47:24 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-7e1bb69e3bc35180-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-23525d37e3ea48b4b5094ca5abe7d725, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 053e04b8-bf2f-4d20-9617-56648239ec29
+	 creation time: 2026-05-18T15:45:17Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-jvwq2
+	 node name: training
+	 start time: 2026-05-18T15:45:17Z
+	 phase: Failed
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: terminated
+		 container started at: 2026-05-18T15:45:19Z
+		 container finished at: 2026-05-18T15:47:24Z
+		 exit code: 143
+		 termination reason: Error
+26/05/18 15:47:24 INFO LoggingPodStatusWatcherImpl: Application status for spark-23525d37e3ea48b4b5094ca5abe7d725 (phase: Failed)
+26/05/18 15:47:24 INFO LoggingPodStatusWatcherImpl: Container final statuses:
+
+
+	 container name: spark-kubernetes-driver
+	 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+	 container state: terminated
+	 container started at: 2026-05-18T15:45:19Z
+	 container finished at: 2026-05-18T15:47:24Z
+	 exit code: 143
+	 termination reason: Error
+26/05/18 15:47:24 INFO LoggingPodStatusWatcherImpl: Application nyc-taxi-started-to-bronze with application ID spark-23525d37e3ea48b4b5094ca5abe7d725 and submission ID lakehouse:nyc-taxi-started-to-bronze-7e1bb69e3bc35180-driver finished

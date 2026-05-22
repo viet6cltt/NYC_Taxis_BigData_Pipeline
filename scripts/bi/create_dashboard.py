@@ -11,17 +11,24 @@ import urllib.request
 from typing import Any
 
 # Config
-SUPERSET_URL  = os.getenv("SUPERSET_URL", "http://localhost:8088")
+K8S_NAMESPACE = os.getenv("K8S_NAMESPACE", "serving")
+K8S_NODE_HOST = os.getenv("K8S_NODE_HOST", "34.143.191.48")
+SUPERSET_NODE_PORT = os.getenv("SUPERSET_NODE_PORT", "30088")
+TRINO_NODE_PORT = os.getenv("TRINO_NODE_PORT", "30091")
+
+SUPERSET_URL  = os.getenv("SUPERSET_URL", f"http://{K8S_NODE_HOST}:{SUPERSET_NODE_PORT}")
 # URL này chỉ để script chạy từ host kiểm tra Trino có lên chưa.
-TRINO_URL     = os.getenv("TRINO_URL", "http://localhost:8080")
+TRINO_URL     = os.getenv("TRINO_URL", f"http://{K8S_NODE_HOST}:{TRINO_NODE_PORT}")
 ADMIN_USER    = os.getenv("SUPERSET_ADMIN_USER", "admin")
 ADMIN_PASS    = os.getenv("SUPERSET_ADMIN_PASS", "admin")
 
 # URI này được Superset dùng từ bên trong container/pod, không phải từ host.
-# Docker Compose mặc định resolve service name "trino".
-# Khi chạy trên K3s có thể override:
-#   TRINO_SQLALCHEMY_URI=trino://hive@trino.lakehouse.svc.cluster.local:8080/delta
-TRINO_URI = os.getenv("TRINO_SQLALCHEMY_URI", "trino://trino@trino:8080/delta")
+# Superset dùng URI này từ trong container/pod. Mặc định trỏ service Trino
+# trên K8s; Docker Compose/local vẫn override được bằng env nếu cần.
+TRINO_URI = os.getenv(
+    "TRINO_SQLALCHEMY_URI",
+    f"trino://trino@trino.{K8S_NAMESPACE}.svc.cluster.local:8080/delta",
+)
 
 # HTTP helpers
 _token: str = ""
@@ -169,6 +176,64 @@ ORDER BY trip_hour
 """,
         "description": "Completed trips and revenue by pickup hour",
     },
+    "business_daily": {
+        "dataset_name": "bi_business_daily",
+        "schema": "silver_nyc_taxi",
+        "sql": """
+SELECT
+    CAST(trip_date AS DATE) AS trip_day,
+    CASE day_of_week(CAST(trip_date AS DATE))
+        WHEN 1 THEN 'Mon'
+        WHEN 2 THEN 'Tue'
+        WHEN 3 THEN 'Wed'
+        WHEN 4 THEN 'Thu'
+        WHEN 5 THEN 'Fri'
+        WHEN 6 THEN 'Sat'
+        WHEN 7 THEN 'Sun'
+    END AS weekday,
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(total_amount), 2) AS avg_total_amount,
+    ROUND(AVG(fare_amount), 2) AS avg_fare,
+    ROUND(AVG(tip_amount), 2) AS avg_tip,
+    ROUND(AVG(trip_distance), 2) AS avg_distance_miles,
+    ROUND(AVG(CAST(trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_duration_min
+FROM delta.silver_nyc_taxi.trip_lifecycle
+WHERE status = 'completed'
+  AND trip_date IS NOT NULL
+GROUP BY 1, 2
+ORDER BY 1
+""",
+        "description": "Daily NYC taxi demand, revenue, fare, tip, distance, and duration",
+    },
+    "business_weekday_hour": {
+        "dataset_name": "bi_business_weekday_hour",
+        "schema": "silver_nyc_taxi",
+        "sql": """
+SELECT
+    CASE day_of_week(CAST(trip_date AS DATE))
+        WHEN 1 THEN 'Mon'
+        WHEN 2 THEN 'Tue'
+        WHEN 3 THEN 'Wed'
+        WHEN 4 THEN 'Thu'
+        WHEN 5 THEN 'Fri'
+        WHEN 6 THEN 'Sat'
+        WHEN 7 THEN 'Sun'
+    END AS weekday,
+    day_of_week(CAST(trip_date AS DATE)) AS weekday_num,
+    trip_hour AS pickup_hour,
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(total_amount), 2) AS avg_total_amount
+FROM delta.silver_nyc_taxi.trip_lifecycle
+WHERE status = 'completed'
+  AND trip_date IS NOT NULL
+  AND trip_hour IS NOT NULL
+GROUP BY 1, 2, 3
+ORDER BY weekday_num, pickup_hour
+""",
+        "description": "Demand rhythm by weekday and pickup hour",
+    },
     "business_routes": {
         "dataset_name": "bi_business_routes",
         "schema": "silver_nyc_taxi",
@@ -176,14 +241,115 @@ ORDER BY trip_hour
 SELECT
     pulocation_id,
     dolocation_id,
+    CONCAT(CAST(pulocation_id AS VARCHAR), ' -> ', CAST(dolocation_id AS VARCHAR)) AS route_pair,
     COUNT(*) AS completed_trips,
     ROUND(SUM(total_amount), 0) AS total_revenue,
-    ROUND(AVG(fare_amount), 2) AS avg_fare
+    ROUND(AVG(total_amount), 2) AS avg_total_amount,
+    ROUND(AVG(fare_amount), 2) AS avg_fare,
+    ROUND(AVG(tip_amount), 2) AS avg_tip,
+    ROUND(AVG(trip_distance), 2) AS avg_distance_miles,
+    ROUND(AVG(CAST(trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_duration_min
 FROM delta.silver_nyc_taxi.trip_lifecycle
 WHERE status = 'completed'
 GROUP BY pulocation_id, dolocation_id
 """,
         "description": "Route-level business metrics",
+    },
+    "business_pickup_zones": {
+        "dataset_name": "bi_business_pickup_zones",
+        "schema": "silver_nyc_taxi",
+        "sql": """
+SELECT
+    pulocation_id,
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(total_amount), 2) AS avg_total_amount,
+    ROUND(AVG(trip_distance), 2) AS avg_distance_miles,
+    ROUND(AVG(CAST(trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_duration_min
+FROM delta.silver_nyc_taxi.trip_lifecycle
+WHERE status = 'completed'
+GROUP BY pulocation_id
+""",
+        "description": "Pickup zone demand and revenue hotspots",
+    },
+    "business_dropoff_zones": {
+        "dataset_name": "bi_business_dropoff_zones",
+        "schema": "silver_nyc_taxi",
+        "sql": """
+SELECT
+    dolocation_id,
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(total_amount), 2) AS avg_total_amount,
+    ROUND(AVG(trip_distance), 2) AS avg_distance_miles,
+    ROUND(AVG(CAST(trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_duration_min
+FROM delta.silver_nyc_taxi.trip_lifecycle
+WHERE status = 'completed'
+GROUP BY dolocation_id
+""",
+        "description": "Dropoff zone demand and revenue hotspots",
+    },
+    "business_fare_buckets": {
+        "dataset_name": "bi_business_fare_buckets",
+        "schema": "silver_nyc_taxi",
+        "sql": """
+SELECT
+    CASE
+        WHEN total_amount < 10 THEN '< $10'
+        WHEN total_amount < 20 THEN '$10-20'
+        WHEN total_amount < 40 THEN '$20-40'
+        WHEN total_amount < 80 THEN '$40-80'
+        ELSE '$80+'
+    END AS fare_bucket,
+    CASE
+        WHEN total_amount < 10 THEN 1
+        WHEN total_amount < 20 THEN 2
+        WHEN total_amount < 40 THEN 3
+        WHEN total_amount < 80 THEN 4
+        ELSE 5
+    END AS bucket_order,
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(trip_distance), 2) AS avg_distance_miles,
+    ROUND(AVG(CAST(trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_duration_min
+FROM delta.silver_nyc_taxi.trip_lifecycle
+WHERE status = 'completed'
+  AND total_amount IS NOT NULL
+GROUP BY 1, 2
+ORDER BY bucket_order
+""",
+        "description": "Trip distribution by total fare amount bucket",
+    },
+    "business_distance_buckets": {
+        "dataset_name": "bi_business_distance_buckets",
+        "schema": "silver_nyc_taxi",
+        "sql": """
+SELECT
+    CASE
+        WHEN trip_distance < 1 THEN '< 1 mi'
+        WHEN trip_distance < 3 THEN '1-3 mi'
+        WHEN trip_distance < 7 THEN '3-7 mi'
+        WHEN trip_distance < 15 THEN '7-15 mi'
+        ELSE '15+ mi'
+    END AS distance_bucket,
+    CASE
+        WHEN trip_distance < 1 THEN 1
+        WHEN trip_distance < 3 THEN 2
+        WHEN trip_distance < 7 THEN 3
+        WHEN trip_distance < 15 THEN 4
+        ELSE 5
+    END AS bucket_order,
+    COUNT(*) AS completed_trips,
+    ROUND(SUM(total_amount), 0) AS total_revenue,
+    ROUND(AVG(total_amount), 2) AS avg_total_amount,
+    ROUND(AVG(CAST(trip_duration_seconds AS DOUBLE)) / 60.0, 1) AS avg_duration_min
+FROM delta.silver_nyc_taxi.trip_lifecycle
+WHERE status = 'completed'
+  AND trip_distance IS NOT NULL
+GROUP BY 1, 2
+ORDER BY bucket_order
+""",
+        "description": "Trip distribution by distance bucket",
     },
     "business_payments": {
         "dataset_name": "bi_business_payments",
@@ -304,11 +470,39 @@ SELECT
     ROUND(AVG(prediction_error), 2) AS bias
 FROM delta.gold_ml.prediction_actuals
 GROUP BY pulocation_id, dolocation_id
-HAVING COUNT(*) >= 10
+HAVING COUNT(*) >= 1
 """,
-        "description": "Route-level production error hotspots",
+        "description": "Route-level error hotspots; preview keeps single-observation routes visible",
     },
 }
+
+BUSINESS_DATASETS = {
+    "business_monthly",
+    "business_daily",
+    "business_hourly",
+    "business_weekday_hour",
+    "business_routes",
+    "business_pickup_zones",
+    "business_dropoff_zones",
+    "business_fare_buckets",
+    "business_distance_buckets",
+    "business_payments",
+    "business_status",
+}
+PREDICTION_DATASETS = {"prediction_daily", "prediction_hourly", "route_coverage"}
+QUALITY_DATASETS = {
+    "quality_daily",
+    "quality_by_estimate_level",
+    "quality_route_hotspots",
+}
+
+
+def has_datasets(ds: dict, required: set[str], label: str) -> bool:
+    missing = sorted(required - set(ds))
+    if missing:
+        print(f"  WARN Skip {label}: missing datasets {', '.join(missing)}")
+        return False
+    return True
 
 
 def ensure_dataset(db_id: int, key: str) -> int:
@@ -317,7 +511,15 @@ def ensure_dataset(db_id: int, key: str) -> int:
     resp = api("GET", f"/api/v1/dataset/?q={filter_q('table_name', name)}")
     if resp.get("count", 0) > 0:
         ds_id = resp["result"][0]["id"]
-        print(f"  OK Dataset '{name}' exists (id={ds_id})")
+        api("PUT", f"/api/v1/dataset/{ds_id}", {
+            "database_id": db_id,
+            "table_name": name,
+            "sql": cfg["sql"].strip(),
+            "schema": cfg["schema"],
+            "is_managed_externally": False,
+        })
+        api("PUT", f"/api/v1/dataset/{ds_id}/refresh")
+        print(f"  OK Dataset '{name}' exists (id={ds_id}); SQL and columns refreshed")
         return ds_id
     payload = {
         "database": db_id,
@@ -333,7 +535,8 @@ def ensure_dataset(db_id: int, key: str) -> int:
             return resp2["result"][0]["id"]
         raise RuntimeError(f"Cannot create dataset '{name}': {resp}")
     ds_id = resp["id"]
-    print(f"  OK Dataset '{name}' created (id={ds_id})")
+    api("PUT", f"/api/v1/dataset/{ds_id}/refresh")
+    print(f"  OK Dataset '{name}' created (id={ds_id}); columns refreshed")
     return ds_id
 
 
@@ -378,10 +581,57 @@ def build_business_charts(ds: dict) -> dict:
         "completed_trips": make_chart("Business - Completed Trips", "big_number_total", ds["business_monthly"], {"metric": simple_metric("completed_trips", "SUM", "Completed Trips"), "subheader": "All time", "y_axis_format": ",.0f"}),
         "revenue": make_chart("Business - Total Revenue", "big_number_total", ds["business_monthly"], {"metric": simple_metric("total_revenue", "SUM", "Revenue"), "subheader": "All time", "y_axis_format": "$,.0f"}),
         "avg_fare": make_chart("Business - Avg Fare", "big_number_total", ds["business_monthly"], {"metric": simple_metric("avg_fare", "AVG", "Avg Fare"), "subheader": "Across months", "y_axis_format": "$,.2f"}),
+        "avg_distance": make_chart("Business - Avg Distance", "big_number_total", ds["business_monthly"], {"metric": simple_metric("avg_distance_miles", "AVG", "Miles"), "subheader": "Average trip length", "y_axis_format": ",.2f"}),
         "monthly_trips": make_chart("Business - Monthly Trips", "echarts_timeseries_bar", ds["business_monthly"], {"x_axis": "year_month", "metrics": [simple_metric("completed_trips", "SUM", "Trips")], "groupby": [], "y_axis_format": ",.0f"}),
         "monthly_revenue": make_chart("Business - Monthly Revenue", "echarts_timeseries_line", ds["business_monthly"], {"x_axis": "year_month", "metrics": [simple_metric("total_revenue", "SUM", "Revenue")], "groupby": [], "y_axis_format": "$,.0f"}),
+        "daily_demand": make_chart(
+            "Business - Daily Revenue Trend",
+            "echarts_timeseries_line",
+            ds["business_daily"],
+            {
+                "x_axis": "trip_day",
+                "metrics": [simple_metric("total_revenue", "SUM", "Revenue")],
+                "groupby": [],
+                "y_axis_format": "$,.0f",
+                "adhoc_filters": [
+                    {
+                        "clause": "WHERE",
+                        "expressionType": "SIMPLE",
+                        "subject": "trip_day",
+                        "operator": "TEMPORAL_RANGE",
+                        "comparator": "2024-01-01 : now",
+                    }
+                ],
+            }
+        ),
+        "daily_revenue": make_chart(
+            "Business - Daily Revenue Trend",
+            "echarts_timeseries_line",
+            ds["business_daily"],
+            {
+                "x_axis": "trip_day",
+                "metrics": [simple_metric("total_revenue", "SUM", "Revenue")],
+                "groupby": [],
+                "y_axis_format": "$,.0f",
+                "adhoc_filters": [
+                    {
+                        "clause": "WHERE",
+                        "expressionType": "SIMPLE",
+                        "subject": "trip_day",
+                        "operator": "TEMPORAL_RANGE",
+                        "comparator": "2024-01-01 : now",
+                    }
+                ],
+            }
+        ),
         "hourly_demand": make_chart("Business - Hourly Demand", "echarts_timeseries_bar", ds["business_hourly"], {"x_axis": "pickup_hour", "metrics": [simple_metric("completed_trips", "SUM", "Trips")], "groupby": [], "y_axis_format": ",.0f"}),
-        "top_routes": make_chart("Business - Top Routes", "table", ds["business_routes"], {"all_columns": ["pulocation_id", "dolocation_id", "completed_trips", "total_revenue", "avg_fare"], "order_by_cols": [["completed_trips", False]], "row_limit": 10}),
+        "weekday_hour": make_chart("Business - Weekday x Hour Demand", "table", ds["business_weekday_hour"], {"all_columns": ["weekday", "pickup_hour", "completed_trips", "total_revenue", "avg_total_amount"], "order_by_cols": [["completed_trips", False]], "row_limit": 24}),
+        "top_pickups": make_chart("Business - Top Pickup Zones", "table", ds["business_pickup_zones"], {"all_columns": ["pulocation_id", "completed_trips", "total_revenue", "avg_total_amount", "avg_distance_miles", "avg_duration_min"], "order_by_cols": [["completed_trips", False]], "row_limit": 15}),
+        "top_dropoffs": make_chart("Business - Top Dropoff Zones", "table", ds["business_dropoff_zones"], {"all_columns": ["dolocation_id", "completed_trips", "total_revenue", "avg_total_amount", "avg_distance_miles", "avg_duration_min"], "order_by_cols": [["completed_trips", False]], "row_limit": 15}),
+        "top_routes": make_chart("Business - Top Route Pairs", "table", ds["business_routes"], {"all_columns": ["route_pair", "pulocation_id", "dolocation_id", "completed_trips", "total_revenue", "avg_total_amount", "avg_distance_miles", "avg_duration_min"], "order_by_cols": [["completed_trips", False]], "row_limit": 15}),
+        "fare_buckets": make_chart("Business - Fare Distribution", "echarts_timeseries_bar", ds["business_fare_buckets"], {"x_axis": "fare_bucket", "metrics": [simple_metric("completed_trips", "SUM", "Trips")], "groupby": [], "y_axis_format": ",.0f"}),
+        "distance_buckets": make_chart("Business - Distance Distribution", "echarts_timeseries_bar", ds["business_distance_buckets"], {"x_axis": "distance_bucket", "metrics": [simple_metric("completed_trips", "SUM", "Trips")], "groupby": [], "y_axis_format": ",.0f"}),
+        "fare_by_distance": make_chart("Business - Avg Fare by Distance", "echarts_timeseries_bar", ds["business_distance_buckets"], {"x_axis": "distance_bucket", "metrics": [simple_metric("avg_total_amount", "AVG", "Avg Total Fare")], "groupby": [], "y_axis_format": "$,.2f"}),
         "payments": make_chart("Business - Payment Mix", "pie", ds["business_payments"], {"groupby": ["payment_type_desc"], "metric": simple_metric("completed_trips", "SUM", "Trips"), "donut": True, "show_labels": True}),
         "status": make_chart("Business - Lifecycle Status", "pie", ds["business_status"], {"groupby": ["status"], "metric": simple_metric("trip_count", "SUM", "Trips"), "donut": True, "show_labels": True}),
     }
@@ -470,6 +720,16 @@ def ensure_dashboard(title: str, slug: str, chart_ids: dict, rows: list[list[tup
             did = resp2["result"][0]["id"]
         else:
             did = created["id"]
+        # Superset only materializes dashboard -> chart relations from
+        # json_metadata.positions during the update path. A fresh POST stores the
+        # layout but leaves dashboard_slices empty, so the UI renders orphaned
+        # chart containers. Follow creation with the same update payload used for
+        # existing dashboards to bind the slices immediately.
+        api("PUT", f"/api/v1/dashboard/{did}", {
+            "position_json": payload["position_json"],
+            "json_metadata": metadata,
+            "published": True,
+        })
         print(f"  OK Dashboard '{title}' ready (id={did})")
     return did
 
@@ -491,29 +751,43 @@ def main():
     print("\n[2] Setting up Trino database connection...")
     db_id = ensure_database()
     print("\n[3] Creating datasets...")
-    ds_ids = {key: ensure_dataset(db_id, key) for key in DATASETS}
+    ds_ids = {}
+    for key in DATASETS:
+        try:
+            ds_ids[key] = ensure_dataset(db_id, key)
+        except urllib.error.HTTPError:
+            print(f"  WARN Dataset '{DATASETS[key]['dataset_name']}' skipped; source table/query is not ready")
+        except Exception as ex:
+            print(f"  WARN Dataset '{DATASETS[key]['dataset_name']}' skipped: {ex}")
     print("\n[4] Creating charts...")
-    business = build_business_charts(ds_ids)
-    prediction = build_prediction_charts(ds_ids)
-    quality = build_quality_charts(ds_ids)
+    business = build_business_charts(ds_ids) if has_datasets(ds_ids, BUSINESS_DATASETS, "Business dashboard") else {}
+    prediction = build_prediction_charts(ds_ids) if has_datasets(ds_ids, PREDICTION_DATASETS, "Prediction dashboard") else {}
+    quality = build_quality_charts(ds_ids) if has_datasets(ds_ids, QUALITY_DATASETS, "Quality dashboard") else {}
     print("\n[5] Building dashboards...")
-    ensure_dashboard("NYC Taxi - Business Overview", "nyc-taxi-business-overview", business, [
-        [("completed-trips", business["completed_trips"], 4, 14), ("revenue", business["revenue"], 4, 14), ("avg-fare", business["avg_fare"], 4, 14)],
-        [("monthly-trips", business["monthly_trips"], 6, 28), ("monthly-revenue", business["monthly_revenue"], 6, 28)],
-        [("hourly-demand", business["hourly_demand"], 6, 28), ("payments", business["payments"], 6, 28)],
-        [("top-routes", business["top_routes"], 8, 30), ("status", business["status"], 4, 30)],
-    ])
-    ensure_dashboard("NYC Taxi - Realtime Prediction Ops", "nyc-taxi-realtime-prediction-ops", prediction, [
-        [("prediction-count", prediction["prediction_count"], 6, 14), ("avg-predicted-fare", prediction["avg_predicted_fare"], 6, 14)],
-        [("daily-predictions", prediction["daily_predictions"], 6, 28), ("hourly-predictions", prediction["hourly_predictions"], 6, 28)],
-        [("estimate-mix", prediction["estimate_mix"], 6, 28), ("model-versions", prediction["model_versions"], 6, 28)],
-        [("route-coverage", prediction["route_coverage"], 12, 30)],
-    ])
-    ensure_dashboard("NYC Taxi - Model Quality", "nyc-taxi-model-quality", quality, [
-        [("mae", quality["mae"], 4, 14), ("bias", quality["bias"], 4, 14), ("label-delay", quality["label_delay"], 4, 14)],
-        [("mae-trend", quality["mae_trend"], 6, 28), ("pred-vs-actual", quality["pred_vs_actual"], 6, 28)],
-        [("quality-by-level", quality["quality_by_level"], 6, 28), ("route-hotspots", quality["route_hotspots"], 6, 30)],
-    ])
+    if business:
+        ensure_dashboard("NYC Taxi - Business Overview", "nyc-taxi-business-overview", business, [
+            [("completed-trips", business["completed_trips"], 3, 14), ("revenue", business["revenue"], 3, 14), ("avg-fare", business["avg_fare"], 3, 14), ("avg-distance", business["avg_distance"], 3, 14)],
+            [("daily-demand", business["daily_demand"], 6, 28), ("daily-revenue", business["daily_revenue"], 6, 28)],
+            [("monthly-trips", business["monthly_trips"], 6, 28), ("monthly-revenue", business["monthly_revenue"], 6, 28)],
+            [("hourly-demand", business["hourly_demand"], 6, 28), ("weekday-hour", business["weekday_hour"], 6, 28)],
+            [("fare-buckets", business["fare_buckets"], 4, 28), ("distance-buckets", business["distance_buckets"], 4, 28), ("fare-by-distance", business["fare_by_distance"], 4, 28)],
+            [("top-pickups", business["top_pickups"], 6, 32), ("top-dropoffs", business["top_dropoffs"], 6, 32)],
+            [("top-routes", business["top_routes"], 8, 34), ("payments", business["payments"], 4, 34)],
+            [("status", business["status"], 12, 24)],
+        ])
+    if prediction:
+        ensure_dashboard("NYC Taxi - Realtime Prediction Ops", "nyc-taxi-realtime-prediction-ops", prediction, [
+            [("prediction-count", prediction["prediction_count"], 6, 14), ("avg-predicted-fare", prediction["avg_predicted_fare"], 6, 14)],
+            [("daily-predictions", prediction["daily_predictions"], 6, 28), ("hourly-predictions", prediction["hourly_predictions"], 6, 28)],
+            [("estimate-mix", prediction["estimate_mix"], 6, 28), ("model-versions", prediction["model_versions"], 6, 28)],
+            [("route-coverage", prediction["route_coverage"], 12, 30)],
+        ])
+    if quality:
+        ensure_dashboard("NYC Taxi - Model Quality", "nyc-taxi-model-quality", quality, [
+            [("mae", quality["mae"], 4, 14), ("bias", quality["bias"], 4, 14), ("label-delay", quality["label_delay"], 4, 14)],
+            [("mae-trend", quality["mae_trend"], 6, 28), ("pred-vs-actual", quality["pred_vs_actual"], 6, 28)],
+            [("quality-by-level", quality["quality_by_level"], 6, 28), ("route-hotspots", quality["route_hotspots"], 6, 30)],
+        ])
     print("\n" + "=" * 60)
     print("  Dashboards ready!")
     print("=" * 60)

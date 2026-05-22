@@ -1,0 +1,38 @@
+artifact_path: model
+flavors:
+  python_function:
+    data: model.xgb
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.12.11
+  xgboost:
+    code: null
+    data: model.xgb
+    model_class: xgboost.sklearn.XGBRegressor
+    model_format: xgb
+    xgb_version: 3.2.0
+mlflow_version: 2.13.0
+model_size_bytes: 191780
+model_uuid: af5762a16a8c4cbb8cbf38ee1895d8b2
+run_id: 687c1981821c42bdb08406585fe2ee61
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "passenger_count", "required": true}, {"type":
+    "double", "name": "estimated_trip_distance", "required": true}, {"type": "double",
+    "name": "estimated_trip_duration_seconds", "required": true}, {"type": "double",
+    "name": "estimated_speed", "required": true}, {"type": "double", "name": "pickup_hour",
+    "required": true}, {"type": "double", "name": "pickup_day_of_week", "required":
+    true}, {"type": "double", "name": "is_weekend", "required": true}, {"type": "double",
+    "name": "hour_sin", "required": true}, {"type": "double", "name": "hour_cos",
+    "required": true}, {"type": "double", "name": "day_sin", "required": true}, {"type":
+    "double", "name": "day_cos", "required": true}, {"type": "double", "name": "distance_manhattan",
+    "required": true}, {"type": "double", "name": "location_cluster", "required":
+    true}, {"type": "double", "name": "temporal_cluster", "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float32", "shape": [-1]}}]'
+  params: null
+utc_time_created: '2026-05-17 19:42:39.560452'

@@ -7,7 +7,8 @@ Steps:
   2. Assemble Spark ML feature vectors
   3. Train XGBoost with xgboost.spark
   4. Log params, metrics, feature importance, model to MLflow
-  5. Register & auto-promote to Production if R² >= threshold
+  5. Register model in MLflow
+  6. Optionally auto-promote for manual runs
 """
 
 import pandas as pd
@@ -30,7 +31,10 @@ from app.config import (
     RANDOM_STATE,
     XGB_PARAMS,
     XGB_NUM_WORKERS,
+    XGB_MAX_TRAIN_ROWS,
     PROMOTE_THRESHOLD_R2,
+    AUTO_PROMOTE,
+    MLFLOW_RUN_TAGS,
 )
 
 
@@ -67,13 +71,31 @@ def _get_sklearn_model(spark_model):
     return sklearn_model
 
 
-def train_and_log(gold_df: DataFrame) -> None:
+def _cap_training_rows(gold_df: DataFrame) -> tuple[DataFrame, int, int | None]:
+    source_rows = gold_df.count()
+    if XGB_MAX_TRAIN_ROWS <= 0 or source_rows <= XGB_MAX_TRAIN_ROWS:
+        return gold_df, source_rows, None
+
+    fraction = XGB_MAX_TRAIN_ROWS / source_rows
+    sampled_df = gold_df.sample(withReplacement=False, fraction=fraction, seed=RANDOM_STATE)
+    sampled_rows = sampled_df.count()
+    print(
+        "[train_xgboost] Capping training input: "
+        f"{source_rows:,} source rows -> {sampled_rows:,} sampled rows "
+        f"(target max {XGB_MAX_TRAIN_ROWS:,}, fraction {fraction:.6f})"
+    )
+    return sampled_df, source_rows, sampled_rows
+
+
+def train_and_log(gold_df: DataFrame) -> dict:
     """
     Train XGBoost model on the Gold dataset and log everything to MLflow.
-    Auto-promotes model to 'Production' stage if test R² ≥ threshold.
+    Airflow retrain runs set AUTO_PROMOTE=false so the DAG can evaluate the
+    candidate against the current Production model before promotion.
     """
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
+    training_input_df, source_rows, sampled_rows = _cap_training_rows(gold_df)
 
     # -------------------------------------------------------------------
     # 1. Prepare data
@@ -83,15 +105,12 @@ def train_and_log(gold_df: DataFrame) -> None:
         outputCol=FEATURES_COL,
         handleInvalid="keep",
     )
-    dataset = assembler.transform(gold_df).select(FEATURES_COL, TARGET_COL).cache()
+    dataset = assembler.transform(training_input_df).select(FEATURES_COL, TARGET_COL)
 
     train_df, test_df = dataset.randomSplit(
         [1.0 - TEST_SIZE, TEST_SIZE],
         seed=RANDOM_STATE,
     )
-    train_df = train_df.cache()
-    test_df = test_df.cache()
-
     train_size = train_df.count()
     test_size = test_df.count()
     num_workers = _resolve_num_workers(gold_df)
@@ -103,9 +122,16 @@ def train_and_log(gold_df: DataFrame) -> None:
     # 2. MLflow run
     # -------------------------------------------------------------------
     with mlflow.start_run(run_name="XGBoost") as run:
+        if MLFLOW_RUN_TAGS:
+            mlflow.set_tags(MLFLOW_RUN_TAGS)
+
         # Params
         mlflow.log_param("model_type",  "XGBoost")
         mlflow.log_param("n_features",  len(FEATURE_COLS))
+        mlflow.log_param("source_rows", source_rows)
+        mlflow.log_param("max_train_rows", XGB_MAX_TRAIN_ROWS)
+        if sampled_rows is not None:
+            mlflow.log_param("sampled_rows", sampled_rows)
         mlflow.log_param("train_size",  train_size)
         mlflow.log_param("test_size",   test_size)
         mlflow.log_param("scaler",      "none")
@@ -146,7 +172,6 @@ def train_and_log(gold_df: DataFrame) -> None:
         train_metrics = _compute_metrics(train_predictions)
         test_metrics = _compute_metrics(test_predictions)
 
-        mlflow.log_metric("train_r2",   train_metrics["r2"])
         mlflow.log_metric("train_r2",   train_metrics["r2"])
         mlflow.log_metric("train_rmse", train_metrics["rmse"])
         mlflow.log_metric("train_mae",  train_metrics["mae"])
@@ -195,14 +220,27 @@ def train_and_log(gold_df: DataFrame) -> None:
         run_id = run.info.run_id
         print(f"[train_xgboost] Run ID: {run_id}")
 
-    train_df.unpersist()
-    test_df.unpersist()
-    dataset.unpersist()
+    if not AUTO_PROMOTE:
+        print("[train_xgboost] AUTO_PROMOTE=false; candidate remains unpromoted for Airflow gate.")
+        return {
+            "run_id": run_id,
+            "train_size": train_size,
+            "test_size": test_size,
+            "num_workers": num_workers,
+            "train_r2": train_metrics["r2"],
+            "train_rmse": train_metrics["rmse"],
+            "train_mae": train_metrics["mae"],
+            "test_r2": test_metrics["r2"],
+            "test_rmse": test_metrics["rmse"],
+            "test_mae": test_metrics["mae"],
+            "promoted": False,
+        }
 
     # -------------------------------------------------------------------
-    # 6. Auto-promote to Production if R² meets threshold
+    # 6. Auto-promote to Production if R² meets threshold for manual runs
     # -------------------------------------------------------------------
     if test_metrics["r2"] >= PROMOTE_THRESHOLD_R2:
+        promoted = False
         client = mlflow.tracking.MlflowClient()
         # Get the latest version we just registered
         versions = client.get_latest_versions(MODEL_NAME, stages=["None"])
@@ -216,6 +254,22 @@ def train_and_log(gold_df: DataFrame) -> None:
             )
             print(f"[train_xgboost] Model v{latest_version} promoted to Production "
                   f"(R²={test_metrics['r2']:.4f} ≥ {PROMOTE_THRESHOLD_R2})")
+            promoted = True
     else:
+        promoted = False
         print(f"[train_xgboost] R²={test_metrics['r2']:.4f} below threshold "
               f"{PROMOTE_THRESHOLD_R2} — model NOT promoted to Production.")
+
+    return {
+        "run_id": run_id,
+        "train_size": train_size,
+        "test_size": test_size,
+        "num_workers": num_workers,
+        "train_r2": train_metrics["r2"],
+        "train_rmse": train_metrics["rmse"],
+        "train_mae": train_metrics["mae"],
+        "test_r2": test_metrics["r2"],
+        "test_rmse": test_metrics["rmse"],
+        "test_mae": test_metrics["mae"],
+        "promoted": promoted,
+    }

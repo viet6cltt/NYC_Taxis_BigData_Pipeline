@@ -42,7 +42,7 @@ spec:
             - name: LOOP_STREAMING
               value: "true"
             - name: STREAMING_SPEED_MULTIPLIER
-              value: "100"
+              value: "200"
             - name: STREAMING_BATCH_SIZE
               value: "100"
             - name: STREAMING_MAX_SLEEP_SECONDS

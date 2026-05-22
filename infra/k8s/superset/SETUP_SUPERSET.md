@@ -6,9 +6,9 @@ Tài liệu hướng dẫn cài đặt Superset (BI & Data Visualization) kết 
 
 ## 🚀 Bước 1: Deploy Superset trên K8s
 
-### 1.1 Tạo namespace `lakehouse` (nếu chưa có)
+### 1.1 Tạo namespace `serving` (nếu chưa có)
 ```bash
-kubectl create namespace lakehouse
+kubectl create namespace serving
 ```
 
 ### 1.2 Deploy Superset stack (PostgreSQL + Superset + Trino connector)
@@ -24,14 +24,14 @@ Các thành phần được deploy:
 ### 1.3 Kiểm tra deployment
 ```bash
 # Xem pods
-kubectl get pods -n lakehouse -l app=superset
+kubectl get pods -n serving -l app=superset
 
 # Xem logs
-kubectl logs -n lakehouse -l app=superset -f
+kubectl logs -n serving -l app=superset -f
 
 # Xem init job
-kubectl get jobs -n lakehouse
-kubectl logs -n lakehouse job/superset-add-trino-db
+kubectl get jobs -n serving
+kubectl logs -n serving job/superset-add-trino-db
 ```
 
 ---
@@ -40,7 +40,7 @@ kubectl logs -n lakehouse job/superset-add-trino-db
 
 ```bash
 # Port-forward Superset UI
-kubectl port-forward -n lakehouse svc/superset 8088:8088 &
+kubectl port-forward -n serving svc/superset 8088:8088 &
 
 # Hoặc dùng NodePort (đã cấu hình port 30088)
 # Truy cập: http://<node-ip>:30088
@@ -98,7 +98,7 @@ SELECT 1 AS test_query
 ### 6.1 Thay đổi mật khẩu admin
 ```bash
 # Port-forward hoặc SSH vào Superset pod
-kubectl exec -it -n lakehouse deployment/superset -- bash
+kubectl exec -it -n serving deployment/superset -- bash
 
 # Chạy lệnh
 superset set-password admin new_password_here
@@ -113,7 +113,7 @@ Sửa `SUPERSET_CONFIG` để bật Redis caching:
 
 ### 6.3 Thêm users khác
 ```bash
-kubectl exec -it -n lakehouse deployment/superset -- bash
+kubectl exec -it -n serving deployment/superset -- bash
 superset fab create-admin --username newuser --password password123 --firstname New --lastname User --email newuser@example.com
 ```
 
@@ -141,32 +141,32 @@ SELECT * FROM delta.gold_ml.features LIMIT 5
 ### Issue 1: "Cannot connect to Trino"
 ```bash
 # Kiểm tra Trino đã chạy
-kubectl get svc -n lakehouse trino
+kubectl get svc -n serving trino
 
 # Test connection từ Superset pod
-kubectl exec -it -n lakehouse deployment/superset -- \
-  curl -X GET http://trino.lakehouse.svc.cluster.local:8080/v1/info
+kubectl exec -it -n serving deployment/superset -- \
+  curl -X GET http://trino.serving.svc.cluster.local:8080/v1/info
 ```
 
 ### Issue 2: "Database initialization failed"
 ```bash
 # Kiểm tra PostgreSQL logs
-kubectl logs -n lakehouse deployment/postgres-superset
+kubectl logs -n serving deployment/postgres-superset
 
 # Xóa và deploy lại
-kubectl delete deployment postgres-superset -n lakehouse
+kubectl delete deployment postgres-superset -n serving
 kubectl apply -f infra/k8s/superset/superset.yaml
 ```
 
 ### Issue 3: Init Job không tạo connection
 ```bash
 # Xem logs của init job
-kubectl logs -n lakehouse job/superset-add-trino-db
+kubectl logs -n serving job/superset-add-trino-db
 
 # Tạo connection thủ công qua UI
 # Admin Panel → Databases → + Database
 # Database: trino
-# SQLAlchemy URI: trino://trino.lakehouse.svc.cluster.local:8080/delta
+# SQLAlchemy URI: trino://trino.serving.svc.cluster.local:8080/delta
 ```
 
 ---

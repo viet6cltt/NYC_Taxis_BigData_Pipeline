@@ -1,0 +1,7 @@
+[streaming] Start replay year=2024, files=4, started_topic=nyc-taxi-trip-started, completed_topic=nyc-taxi-trip-completed, speed_multiplier=1.0, flush_every=100
+[streaming] Reading full file into RAM: yellow_tripdata_2024-09.parquet
+[streaming] Prepared file=yellow_tripdata_2024-09.parquet, rows_before=3633030, rows_after=3633027
+[streaming] Sent=100 (started=88, completed=12), bad_ts=0, last_valid_ts=2024-09-01 00:00:51
+[streaming] Progress: 100 events. kind=started, simulation_time=2024-09-01 00:00:52
+[streaming] Sent=200 (started=184, completed=16), bad_ts=0, last_valid_ts=2024-09-01 00:02:01
+[streaming] Progress: 200 events. kind=started, simulation_time=2024-09-01 00:02:01

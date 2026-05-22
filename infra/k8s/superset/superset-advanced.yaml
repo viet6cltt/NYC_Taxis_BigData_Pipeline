@@ -4,7 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis-superset
-  namespace: lakehouse
+  namespace: serving
 spec:
   replicas: 1
   selector:
@@ -44,7 +44,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis-superset
-  namespace: lakehouse
+  namespace: serving
 spec:
   selector:
     app: redis-superset
@@ -60,7 +60,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: superset-worker
-  namespace: lakehouse
+  namespace: serving
 spec:
   replicas: 1
   selector:
@@ -108,7 +108,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: superset-beat
-  namespace: lakehouse
+  namespace: serving
 spec:
   replicas: 1
   selector:

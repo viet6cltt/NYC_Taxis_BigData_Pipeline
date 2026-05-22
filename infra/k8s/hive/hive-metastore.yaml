@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: lakehouse
+  name: serving
 
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: hive-metastore-pvc
-  namespace: lakehouse
+  namespace: serving
 spec:
   accessModes:
     - ReadWriteOnce
@@ -21,7 +21,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: hive-metastore-config
-  namespace: lakehouse
+  namespace: serving
 data:
   SERVICE_NAME: "metastore"
   DB_DRIVER: "derby"
@@ -95,7 +95,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hive-metastore
-  namespace: lakehouse
+  namespace: serving
 spec:
   replicas: 1
   selector:
@@ -146,7 +146,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: hive-metastore
-  namespace: lakehouse
+  namespace: serving
 spec:
   selector:
     app: hive-metastore

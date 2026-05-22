@@ -41,6 +41,8 @@ spec:
               value: "s3a://lakehouse/gold/ml/predictions"
             - name: CHECKPOINT_LOCATION
               value: "s3a://lakehouse/_checkpoints/gold/ml/stream_predict"
+            - name: PREDICTION_LOG_SAMPLE_ROWS
+              value: "10"
             - name: N_LOCATION_CLUSTERS
               value: "5"
             - name: N_TEMPORAL_CLUSTERS

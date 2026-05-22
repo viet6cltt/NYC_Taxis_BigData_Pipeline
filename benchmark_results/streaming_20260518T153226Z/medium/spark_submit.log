@@ -1,0 +1,179 @@
+--- Đã tìm thấy Spark tại /home/viet-k3s-google/Downloads/spark-4.1.1-bin-hadoop3 ---
+--- Đang submit started streaming-to-bronze job lên Kubernetes ---
+WARNING: Using incubator modules: jdk.incubator.vector
+26/05/18 15:37:40 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/05/18 15:37:40 INFO SparkKubernetesClientFactory: Auto-configuring K8S client using current context from users K8S config file
+26/05/18 15:37:41 INFO KerberosConfDriverFeatureStep: You have not specified a krb5.conf file locally or via a ConfigMap. Make sure that you have the krb5.conf locally on the driver image.
+26/05/18 15:37:42 INFO SslUtils: Default SSL endpoint verification has been disabled:  -Dio.netty.handler.ssl.defaultEndpointVerificationAlgorithm="NONE"
+26/05/18 15:37:43 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-40fa1b9e3bbc5d29-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-73104173b87d46afbe58256f1b953d52, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 93615039-640f-4763-a003-4bee9612173c
+	 creation time: 2026-05-18T15:37:42Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-z8xnx
+	 node name: training
+	 start time: 2026-05-18T15:37:42Z
+	 phase: Pending
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: waiting
+		 pending reason: ContainerCreating
+26/05/18 15:37:43 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-40fa1b9e3bbc5d29-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-73104173b87d46afbe58256f1b953d52, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 93615039-640f-4763-a003-4bee9612173c
+	 creation time: 2026-05-18T15:37:42Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-z8xnx
+	 node name: training
+	 start time: 2026-05-18T15:37:42Z
+	 phase: Pending
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: waiting
+		 pending reason: ContainerCreating
+26/05/18 15:37:43 INFO LoggingPodStatusWatcherImpl: Waiting for application nyc-taxi-started-to-bronze with application ID spark-73104173b87d46afbe58256f1b953d52 and submission ID lakehouse:nyc-taxi-started-to-bronze-40fa1b9e3bbc5d29-driver to finish...
+26/05/18 15:37:44 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-40fa1b9e3bbc5d29-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-73104173b87d46afbe58256f1b953d52, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 93615039-640f-4763-a003-4bee9612173c
+	 creation time: 2026-05-18T15:37:42Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-z8xnx
+	 node name: training
+	 start time: 2026-05-18T15:37:42Z
+	 phase: Running
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: running
+		 container started at: 2026-05-18T15:37:43Z
+26/05/18 15:37:44 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:45 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:46 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:47 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:48 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:49 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:50 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:51 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:52 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:53 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:54 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:55 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:56 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:57 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:58 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:37:59 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:00 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:01 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:02 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:03 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:04 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:05 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:06 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:07 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:08 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:09 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:10 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:11 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:12 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:13 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:14 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:15 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:16 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:17 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:18 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:19 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:20 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:21 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:22 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:23 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:24 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:25 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:26 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:27 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:28 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:29 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:30 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:31 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:32 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:33 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:34 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:35 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:36 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:37 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:38 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:39 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:40 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:40 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-40fa1b9e3bbc5d29-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-73104173b87d46afbe58256f1b953d52, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 93615039-640f-4763-a003-4bee9612173c
+	 creation time: 2026-05-18T15:37:42Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-z8xnx
+	 node name: training
+	 start time: 2026-05-18T15:37:42Z
+	 phase: Running
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: running
+		 container started at: 2026-05-18T15:37:43Z
+26/05/18 15:38:40 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-40fa1b9e3bbc5d29-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-73104173b87d46afbe58256f1b953d52, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 93615039-640f-4763-a003-4bee9612173c
+	 creation time: 2026-05-18T15:37:42Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-z8xnx
+	 node name: training
+	 start time: 2026-05-18T15:37:42Z
+	 phase: Running
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: running
+		 container started at: 2026-05-18T15:37:43Z
+26/05/18 15:38:41 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:42 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Running)
+26/05/18 15:38:42 INFO LoggingPodStatusWatcherImpl: State changed, new state: 
+	 pod name: nyc-taxi-started-to-bronze-40fa1b9e3bbc5d29-driver
+	 namespace: lakehouse
+	 labels: spark-app-name -> nyc-taxi-started-to-bronze, spark-app-selector -> spark-73104173b87d46afbe58256f1b953d52, spark-role -> driver, spark-version -> 4.1.1
+	 pod uid: 93615039-640f-4763-a003-4bee9612173c
+	 creation time: 2026-05-18T15:37:42Z
+	 service account name: spark-user
+	 volumes: data-vol, spark-local-dir-1, spark-conf-volume-driver, kube-api-access-z8xnx
+	 node name: training
+	 start time: 2026-05-18T15:37:42Z
+	 phase: Failed
+	 container status: 
+		 container name: spark-kubernetes-driver
+		 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+		 container state: terminated
+		 container started at: 2026-05-18T15:37:43Z
+		 container finished at: 2026-05-18T15:38:42Z
+		 exit code: 143
+		 termination reason: Error
+26/05/18 15:38:42 INFO LoggingPodStatusWatcherImpl: Application status for spark-73104173b87d46afbe58256f1b953d52 (phase: Failed)
+26/05/18 15:38:42 INFO LoggingPodStatusWatcherImpl: Container final statuses:
+
+
+	 container name: spark-kubernetes-driver
+	 container image: 10.148.0.2:5000/nyc-taxi-streaming-consumer:v1.0
+	 container state: terminated
+	 container started at: 2026-05-18T15:37:43Z
+	 container finished at: 2026-05-18T15:38:42Z
+	 exit code: 143
+	 termination reason: Error
+26/05/18 15:38:42 INFO LoggingPodStatusWatcherImpl: Application nyc-taxi-started-to-bronze with application ID spark-73104173b87d46afbe58256f1b953d52 and submission ID lakehouse:nyc-taxi-started-to-bronze-40fa1b9e3bbc5d29-driver finished

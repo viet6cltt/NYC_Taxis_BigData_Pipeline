@@ -37,5 +37,6 @@ echo "--- Pushing images ---"
 docker push "${REGISTRY}/nyc-taxi-stream-predict:${TAG}"
 docker push "${REGISTRY}/nyc-taxi-fastapi:${TAG}"
 docker push "${REGISTRY}/nyc-taxi-bentoml:${TAG}"
+docker push "${REGISTRY}/nyc-taxi-bentoml:${TAG}"
 
 echo "=== Serving images built and pushed ==="
