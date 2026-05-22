@@ -79,7 +79,7 @@ SPARK_TRAIN_EXECUTOR_MEMORY = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_MEMORY", "6g")
 SPARK_TRAIN_DRIVER_MEMORY_OVERHEAD = os.getenv("NYC_TAXI_MLOPS_DRIVER_MEMORY_OVERHEAD", "1g")
 SPARK_TRAIN_EXECUTOR_MEMORY_OVERHEAD = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_MEMORY_OVERHEAD", "2g")
 SPARK_FEATURE_EXECUTOR_INSTANCES = os.getenv("NYC_TAXI_MLOPS_FEATURE_EXECUTOR_INSTANCES", "1")
-SPARK_TRAIN_EXECUTOR_INSTANCES = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_INSTANCES", "3")
+SPARK_TRAIN_EXECUTOR_INSTANCES = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_INSTANCES", "2")
 SPARK_FEATURE_EXECUTOR_CORES = os.getenv("NYC_TAXI_MLOPS_FEATURE_EXECUTOR_CORES", "1")
 SPARK_TRAIN_EXECUTOR_CORES = os.getenv("NYC_TAXI_MLOPS_EXECUTOR_CORES", "2")
 SPARK_SHUFFLE_PARTITIONS = os.getenv("NYC_TAXI_MLOPS_SHUFFLE_PARTITIONS", "6")
@@ -91,7 +91,8 @@ SPARK_EXECUTOR_DELETE_ON_TERMINATION = os.getenv(
     "NYC_TAXI_SPARK_EXECUTOR_DELETE_ON_TERMINATION",
     "true",
 )
-XGB_NUM_WORKERS = os.getenv("NYC_TAXI_XGB_NUM_WORKERS", "1")
+XGB_NUM_WORKERS = SPARK_TRAIN_EXECUTOR_INSTANCES
+XGB_MAX_TRAIN_ROWS = os.getenv("NYC_TAXI_XGB_MAX_TRAIN_ROWS", "0")
 
 MIN_TEST_ROWS = int(os.getenv("NYC_TAXI_MIN_TEST_ROWS", "10000"))
 MAX_R2_DROP = float(os.getenv("NYC_TAXI_MAX_R2_DROP", "0.03"))
@@ -137,17 +138,10 @@ def spark_submit_command(
     executor_cores: str,
     driver_memory_overhead: str | None = None,
     executor_memory_overhead: str | None = None,
-    use_spark_node_selector: bool = True,
 ) -> str:
     env_conf = "\n".join(
         f"  --conf spark.kubernetes.driverEnv.{key}={_quote(value)} \\"
         for key, value in driver_env.items()
-    )
-    node_selector_conf = (
-        "  --conf spark.kubernetes.driver.node.selector.workload=spark \\\n"
-        "  --conf spark.kubernetes.executor.node.selector.workload=spark \\\n"
-        if use_spark_node_selector
-        else ""
     )
     overhead_conf = ""
     if driver_memory_overhead:
@@ -163,7 +157,6 @@ set -euo pipefail
   --deploy-mode cluster \\
   --name {name} \\
   --conf spark.kubernetes.namespace={NAMESPACE} \\
-{node_selector_conf}\
   --conf spark.kubernetes.container.image={image} \\
   --conf spark.kubernetes.container.image.pullPolicy={SPARK_IMAGE_PULL_POLICY} \\
   --conf spark.kubernetes.authenticate.driver.serviceAccountName={SERVICE_ACCOUNT} \\
@@ -423,6 +416,7 @@ training_env = {
     "MODEL_NAME": MODEL_NAME,
     "GOLD_FEATURES_PATH": GOLD_FEATURES_PATH,
     "XGB_NUM_WORKERS": XGB_NUM_WORKERS,
+    "XGB_MAX_TRAIN_ROWS": XGB_MAX_TRAIN_ROWS,
     "AUTO_PROMOTE": "false",
     "TRAINING_PIPELINE": "airflow_mlops_retrain",
     "AIRFLOW_DAG_ID": "nyc_taxi_mlops_retrain",
@@ -509,7 +503,6 @@ with DAG(
                 executor_cores=SPARK_TRAIN_EXECUTOR_CORES,
                 driver_memory_overhead=SPARK_TRAIN_DRIVER_MEMORY_OVERHEAD,
                 executor_memory_overhead=SPARK_TRAIN_EXECUTOR_MEMORY_OVERHEAD,
-                use_spark_node_selector=False,
             )
         ],
         service_account_name=SERVICE_ACCOUNT,

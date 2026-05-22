@@ -31,6 +31,7 @@ from app.config import (
     RANDOM_STATE,
     XGB_PARAMS,
     XGB_NUM_WORKERS,
+    XGB_MAX_TRAIN_ROWS,
     PROMOTE_THRESHOLD_R2,
     AUTO_PROMOTE,
     MLFLOW_RUN_TAGS,
@@ -70,6 +71,22 @@ def _get_sklearn_model(spark_model):
     return sklearn_model
 
 
+def _cap_training_rows(gold_df: DataFrame) -> tuple[DataFrame, int, int | None]:
+    source_rows = gold_df.count()
+    if XGB_MAX_TRAIN_ROWS <= 0 or source_rows <= XGB_MAX_TRAIN_ROWS:
+        return gold_df, source_rows, None
+
+    fraction = XGB_MAX_TRAIN_ROWS / source_rows
+    sampled_df = gold_df.sample(withReplacement=False, fraction=fraction, seed=RANDOM_STATE)
+    sampled_rows = sampled_df.count()
+    print(
+        "[train_xgboost] Capping training input: "
+        f"{source_rows:,} source rows -> {sampled_rows:,} sampled rows "
+        f"(target max {XGB_MAX_TRAIN_ROWS:,}, fraction {fraction:.6f})"
+    )
+    return sampled_df, source_rows, sampled_rows
+
+
 def train_and_log(gold_df: DataFrame) -> dict:
     """
     Train XGBoost model on the Gold dataset and log everything to MLflow.
@@ -78,6 +95,7 @@ def train_and_log(gold_df: DataFrame) -> dict:
     """
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
+    training_input_df, source_rows, sampled_rows = _cap_training_rows(gold_df)
 
     # -------------------------------------------------------------------
     # 1. Prepare data
@@ -87,15 +105,12 @@ def train_and_log(gold_df: DataFrame) -> dict:
         outputCol=FEATURES_COL,
         handleInvalid="keep",
     )
-    dataset = assembler.transform(gold_df).select(FEATURES_COL, TARGET_COL).cache()
+    dataset = assembler.transform(training_input_df).select(FEATURES_COL, TARGET_COL)
 
     train_df, test_df = dataset.randomSplit(
         [1.0 - TEST_SIZE, TEST_SIZE],
         seed=RANDOM_STATE,
     )
-    train_df = train_df.cache()
-    test_df = test_df.cache()
-
     train_size = train_df.count()
     test_size = test_df.count()
     num_workers = _resolve_num_workers(gold_df)
@@ -113,6 +128,10 @@ def train_and_log(gold_df: DataFrame) -> dict:
         # Params
         mlflow.log_param("model_type",  "XGBoost")
         mlflow.log_param("n_features",  len(FEATURE_COLS))
+        mlflow.log_param("source_rows", source_rows)
+        mlflow.log_param("max_train_rows", XGB_MAX_TRAIN_ROWS)
+        if sampled_rows is not None:
+            mlflow.log_param("sampled_rows", sampled_rows)
         mlflow.log_param("train_size",  train_size)
         mlflow.log_param("test_size",   test_size)
         mlflow.log_param("scaler",      "none")
@@ -200,10 +219,6 @@ def train_and_log(gold_df: DataFrame) -> dict:
 
         run_id = run.info.run_id
         print(f"[train_xgboost] Run ID: {run_id}")
-
-    train_df.unpersist()
-    test_df.unpersist()
-    dataset.unpersist()
 
     if not AUTO_PROMOTE:
         print("[train_xgboost] AUTO_PROMOTE=false; candidate remains unpromoted for Airflow gate.")

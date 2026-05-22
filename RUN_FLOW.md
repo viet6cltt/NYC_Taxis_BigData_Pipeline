@@ -1,6 +1,6 @@
 # Full Demo Run Flow
 
-File này là kịch bản chạy full pipeline để demo với thầy:
+File này là kịch bản chạy full pipeline để demo:
 
 ```text
 Raw NYC Taxi data
@@ -92,14 +92,6 @@ kubectl get pods -n lakehouse
 kubectl get pods -n monitoring
 ```
 
-Nói với thầy:
-
-```text
-Hệ thống chạy trên K3s. Kafka dùng 2 brokers, topic 6 partitions và replication factor 2.
-Spark jobs chạy trên Kubernetes theo mô hình driver/executor pod.
-MinIO làm object storage cho Delta Lake và MLflow artifacts.
-```
-
 ## 2.5 Spark Resource Presets
 
 Các script Spark đã hỗ trợ override tài nguyên bằng biến môi trường. Dynamic allocation bật theo kiểu opt-in:
@@ -132,6 +124,7 @@ Không nên lạm dụng dynamic allocation cho Structured Streaming và XGBoost
 SPARK_DRIVER_MEMORY=2g \
 SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
+SPARK_EXECUTOR_CORES=2 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS=1 \
@@ -139,13 +132,6 @@ SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS=4 \
 SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS=1 \
 bash scripts/ingestion/run_batch.sh
 ```
-
-Nói:
-
-```text
-Spark batch job đọc parquet NYC Taxi từ volume dữ liệu, chuẩn hóa schema và ghi vào Bronze Delta Lake trên MinIO.
-```
-
 Output:
 
 ```text
@@ -158,11 +144,12 @@ s3a://lakehouse/bronze/nyc-taxi/trip_completed
 SPARK_DRIVER_MEMORY=2g \
 SPARK_EXECUTOR_MEMORY=4g \
 SPARK_EXECUTOR_INSTANCES=1 \
-SPARK_SHUFFLE_PARTITIONS=12 \
+SPARK_EXECUTOR_CORES=2 \
+SPARK_SHUFFLE_PARTITIONS=15 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS=1 \
-SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS=3 \
+SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS=5 \
 SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS=1 \
 bash scripts/processing/run_silver.sh completed batch
 ```
@@ -185,9 +172,12 @@ Lệnh wrapper này tương đương `bash scripts/processing/run_silver.sh life
 
 ```bash
 SPARK_DRIVER_MEMORY=2g \
-SPARK_EXECUTOR_MEMORY=3g \
+SPARK_DRIVER_MEMORY_OVERHEAD=1g \
+SPARK_EXECUTOR_MEMORY=7g \
+SPARK_EXECUTOR_MEMORY_OVERHEAD=2g \
 SPARK_EXECUTOR_INSTANCES=1 \
-SPARK_SHUFFLE_PARTITIONS=12 \
+SPARK_EXECUTOR_CORES=2 \
+SPARK_SHUFFLE_PARTITIONS=20 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS=1 \
@@ -208,16 +198,18 @@ s3a://lakehouse/silver/nyc-taxi/trip_lifecycle
 SPARK_DRIVER_MEMORY=2g \
 SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
+SPARK_EXECUTOR_CORES=2 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS=1 \
-SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS=2 \
+SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS=4 \
 SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS=1 \
 bash scripts/training/run_feature_engineering.sh route_estimates
 
 SPARK_DRIVER_MEMORY=2g \
 SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
+SPARK_EXECUTOR_CORES=2 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS=1 \
@@ -251,22 +243,12 @@ XGB_NUM_WORKERS=2 \
 bash scripts/training/run_training.sh
 ```
 
-Ghi chú: training XGBoost nên giữ executor/worker cố định. Chỉ bật dynamic allocation cho training nếu bạn đã chỉnh `XGB_NUM_WORKERS` và chắc chắn executor không bị scale xuống trong lúc train.
+Ghi chú: training XGBoost nên giữ executor/worker cố định. Chỉ bật dynamic allocation cho training nếu đã chỉnh `XGB_NUM_WORKERS` và chắc chắn executor không bị scale xuống trong lúc train.
 
 Mở MLflow:
 
 ```text
 http://localhost:5000
-```
-
-Chỉ cho thầy:
-
-```text
-Experiment: NYC_Taxi_Fare_Prediction
-Model name: XGB_NYC_Fare
-Metrics: train_r2, test_r2, test_rmse, test_mae
-Artifacts: feature_importance, model
-Registry stage: Production
 ```
 
 Nói:
@@ -322,8 +304,8 @@ Airflow không promote mù quáng. Model mới chỉ lên Production nếu metri
 Terminal 1: chạy Spark streaming consumers Kafka -> Bronze:
 
 ```bash
-SPARK_DRIVER_MEMORY=2g \
-SPARK_EXECUTOR_MEMORY=2g \
+SPARK_DRIVER_MEMORY=1g \
+SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
 MAX_OFFSETS_PER_TRIGGER=5000 \
 TRIGGER_INTERVAL="30 seconds" \
@@ -336,10 +318,10 @@ Terminal 2: bật replay producer:
 kubectl apply -f infra/k8s/ingestion/streaming/streaming_deployment.yaml
 ```
 
-Manifest này đang cấu hình replay producer giả lập nhanh hơn real-time 500 lần:
+Manifest này đang cấu hình replay producer giả lập nhanh hơn real-time 200 lần:
 
 ```yaml
-STREAMING_SPEED_MULTIPLIER: "500"
+STREAMING_SPEED_MULTIPLIER: "200"
 ```
 
 Check:
@@ -349,8 +331,6 @@ kubectl get pods -n ingestion
 kubectl get pods -n lakehouse
 kubectl logs -n lakehouse -l spark-role=driver --tail=80
 ```
-
-Nói:
 
 ```text
 Replay producer mô phỏng taxi events realtime và đẩy started/completed events vào Kafka.
@@ -371,19 +351,18 @@ Chạy Silver streaming:
 
 ```bash
 SPARK_DRIVER_MEMORY=1g \
-SPARK_EXECUTOR_MEMORY=2g \
+SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
-SPARK_SHUFFLE_PARTITIONS=4 \
+SPARK_SHUFFLE_PARTITIONS=8 \
 bash scripts/processing/run_silver.sh started streaming
 
 SPARK_DRIVER_MEMORY=1g \
-SPARK_EXECUTOR_MEMORY=2g \
+SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
-SPARK_SHUFFLE_PARTITIONS=4 \
+SPARK_SHUFFLE_PARTITIONS=8 \
+STARTING_VERSION="1" \
 bash scripts/processing/run_silver.sh completed streaming
 ```
-
-Ghi chú: với streaming, ưu tiên executor cố định nhỏ để latency ổn định. Chỉ bật dynamic allocation khi benchmark cho thấy backlog tăng liên tục và cluster còn dư tài nguyên.
 
 Airflow lifecycle merge:
 
@@ -448,7 +427,7 @@ Lệnh:
 
 ```bash
 SPARK_DRIVER_MEMORY=2g \
-SPARK_EXECUTOR_MEMORY=4g \
+SPARK_EXECUTOR_MEMORY=5g \
 SPARK_EXECUTOR_INSTANCES=1 \
 MAX_FILES_PER_TRIGGER=8 \
 TRIGGER_INTERVAL="30 seconds" \
@@ -676,6 +655,7 @@ kubectl apply -f infra/k8s/monitoring/prometheus-grafana-loki.yaml
 SPARK_DRIVER_MEMORY=2g \
 SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
+SPARK_EXECUTOR_CORES=2 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS=1 \
@@ -686,6 +666,7 @@ bash scripts/ingestion/run_batch.sh
 SPARK_DRIVER_MEMORY=2g \
 SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
+SPARK_EXECUTOR_CORES=2 \
 SPARK_SHUFFLE_PARTITIONS=12 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
@@ -695,19 +676,23 @@ SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS=1 \
 bash scripts/processing/run_silver.sh completed batch
 
 SPARK_DRIVER_MEMORY=2g \
-SPARK_EXECUTOR_MEMORY=3g \
+SPARK_DRIVER_MEMORY_OVERHEAD=1g \
+SPARK_EXECUTOR_MEMORY=6g \
+SPARK_EXECUTOR_MEMORY_OVERHEAD=2g \
 SPARK_EXECUTOR_INSTANCES=1 \
+SPARK_EXECUTOR_CORES=2 \
 SPARK_SHUFFLE_PARTITIONS=12 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS=1 \
-SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS=4 \
+SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS=2 \
 SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS=1 \
 bash scripts/processing/run_lifecycle_merge.sh
 
 SPARK_DRIVER_MEMORY=2g \
 SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
+SPARK_EXECUTOR_CORES=2 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS=1 \
@@ -718,6 +703,7 @@ bash scripts/training/run_feature_engineering.sh route_estimates
 SPARK_DRIVER_MEMORY=2g \
 SPARK_EXECUTOR_MEMORY=3g \
 SPARK_EXECUTOR_INSTANCES=1 \
+SPARK_EXECUTOR_CORES=2 \
 SPARK_DYNAMIC_ALLOCATION_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED=true \
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS=1 \

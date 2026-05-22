@@ -33,16 +33,17 @@ TARGET="${1:-all}"                     # all|started|completed|lifecycle|expire
 REQUESTED_PIPELINE_MODE="${2:-streaming}" # streaming|batch
 REGISTRY="${REGISTRY:-localhost:5000}"
 IMAGE="nyc-taxi-silver-consumer:v1.0"
-APP_FILE="local:///opt/spark/work-dir/app/main.py"
+APP_FILE="${APP_FILE:-local:///opt/spark/work-dir/app/main.py}"
+SPARK_APP_NAME="${SPARK_APP_NAME:-nyc-taxi-silver}"
 
 # Paths
-BRONZE_STARTED_PATH="s3a://lakehouse/bronze/nyc-taxi/trip_started"
-BRONZE_COMPLETED_PATH="s3a://lakehouse/bronze/nyc-taxi/trip_completed"
-SILVER_STARTED_PATH="s3a://lakehouse/silver/nyc-taxi/trip_started"
-SILVER_COMPLETED_PATH="s3a://lakehouse/silver/nyc-taxi/trip_completed"
-LIFECYCLE_PATH="s3a://lakehouse/silver/nyc-taxi/trip_lifecycle"
-STARTED_CHECKPOINT_PATH="s3a://lakehouse/_checkpoints/silver/trip_started/processor"
-COMPLETED_CHECKPOINT_PATH="s3a://lakehouse/_checkpoints/silver/trip_completed/processor"
+BRONZE_STARTED_PATH="${BRONZE_STARTED_PATH:-s3a://lakehouse/bronze/nyc-taxi/trip_started}"
+BRONZE_COMPLETED_PATH="${BRONZE_COMPLETED_PATH:-s3a://lakehouse/bronze/nyc-taxi/trip_completed}"
+SILVER_STARTED_PATH="${SILVER_STARTED_PATH:-s3a://lakehouse/silver/nyc-taxi/trip_started}"
+SILVER_COMPLETED_PATH="${SILVER_COMPLETED_PATH:-s3a://lakehouse/silver/nyc-taxi/trip_completed}"
+LIFECYCLE_PATH="${LIFECYCLE_PATH:-s3a://lakehouse/silver/nyc-taxi/trip_lifecycle}"
+STARTED_CHECKPOINT_PATH="${STARTED_CHECKPOINT_PATH:-s3a://lakehouse/_checkpoints/silver/trip_started/processor}"
+COMPLETED_CHECKPOINT_PATH="${COMPLETED_CHECKPOINT_PATH:-s3a://lakehouse/_checkpoints/silver/trip_completed/processor}"
 
 TRIGGER_INTERVAL="${TRIGGER_INTERVAL:-30 seconds}"
 WATERMARK_DELAY="${WATERMARK_DELAY:-48 hours}"
@@ -54,8 +55,11 @@ SPARK_LOCAL_DIR="${SPARK_LOCAL_DIR:-/data/spark-local/silver}"
 TMPDIR="${TMPDIR:-/data/tmp/silver}"
 S3A_BUFFER_DIR="${S3A_BUFFER_DIR:-/data/s3a-buffer/silver}"
 SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-2g}"
+SPARK_DRIVER_MEMORY_OVERHEAD="${SPARK_DRIVER_MEMORY_OVERHEAD:-1g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-2}"
+SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-2}"
 SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-4g}"
+SPARK_EXECUTOR_MEMORY_OVERHEAD="${SPARK_EXECUTOR_MEMORY_OVERHEAD:-1g}"
 SPARK_SHUFFLE_PARTITIONS="${SPARK_SHUFFLE_PARTITIONS:-6}"
 SPARK_DYNAMIC_ALLOCATION_ENABLED="${SPARK_DYNAMIC_ALLOCATION_ENABLED:-false}"
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED="${SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED:-true}"
@@ -63,6 +67,14 @@ SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS
 SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS:-4}"
 SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS:-$SPARK_EXECUTOR_INSTANCES}"
 BENCHMARK_METRICS_ENABLED="${BENCHMARK_METRICS_ENABLED:-true}"
+BENCHMARK_ACTION="${BENCHMARK_ACTION:-}"
+BENCHMARK_INPUT_PATH="${BENCHMARK_INPUT_PATH:-}"
+BENCHMARK_PARTITIONED_PATH="${BENCHMARK_PARTITIONED_PATH:-}"
+BENCHMARK_UNPARTITIONED_PATH="${BENCHMARK_UNPARTITIONED_PATH:-}"
+BENCHMARK_FILTER_MONTH="${BENCHMARK_FILTER_MONTH:-2024-01}"
+BENCHMARK_FILTER_QUARTER="${BENCHMARK_FILTER_QUARTER:-2024-01,2024-02,2024-03}"
+BENCHMARK_MERGE_TRIALS="${BENCHMARK_MERGE_TRIALS:-3}"
+BENCHMARK_MERGE_INCLUDE_ALL_MONTHS="${BENCHMARK_MERGE_INCLUDE_ALL_MONTHS:-true}"
 
 # MinIO / Delta
 MINIO_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-http://minio-api.storage.svc.cluster.local:9000}"
@@ -132,6 +144,7 @@ submit_silver_job() {
     fi
 
     echo "--- Submit silver job=${silver_job}, mode=${pipeline_mode} ---"
+    echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES} cores, ${SPARK_EXECUTOR_MEMORY}"
     ensure_data_dirs
 
     local dynamic_allocation_conf=()
@@ -148,7 +161,7 @@ submit_silver_job() {
     "$SPARK_DIR/bin/spark-submit" \
     --master "$K8S_MASTER" \
     --deploy-mode cluster \
-    --name "nyc-taxi-silver-${silver_job}" \
+    --name "${SPARK_APP_NAME}-${silver_job}" \
     --conf spark.kubernetes.namespace="$NAMESPACE" \
     --conf spark.kubernetes.driver.node.selector.workload=spark \
     --conf spark.kubernetes.executor.node.selector.workload=spark \
@@ -175,9 +188,18 @@ submit_silver_job() {
     --conf spark.kubernetes.driverEnv.TRIGGER_INTERVAL="$TRIGGER_INTERVAL" \
     --conf spark.kubernetes.driverEnv.WATERMARK_DELAY="$WATERMARK_DELAY" \
     --conf spark.kubernetes.driverEnv.LIFECYCLE_TTL_HOURS="$LIFECYCLE_TTL_HOURS" \
+    --conf spark.kubernetes.driverEnv.STARTING_VERSION="$STARTING_VERSION" \
     --conf spark.kubernetes.driverEnv.LIFECYCLE_MERGE_SINCE_TIMESTAMP="$LIFECYCLE_MERGE_SINCE_TIMESTAMP" \
     --conf spark.kubernetes.driverEnv.LIFECYCLE_MERGE_UNTIL_TIMESTAMP="$LIFECYCLE_MERGE_UNTIL_TIMESTAMP" \
     --conf spark.kubernetes.driverEnv.BENCHMARK_METRICS_ENABLED="$BENCHMARK_METRICS_ENABLED" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_ACTION="$BENCHMARK_ACTION" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_INPUT_PATH="$BENCHMARK_INPUT_PATH" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_PARTITIONED_PATH="$BENCHMARK_PARTITIONED_PATH" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_UNPARTITIONED_PATH="$BENCHMARK_UNPARTITIONED_PATH" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_FILTER_MONTH="$BENCHMARK_FILTER_MONTH" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_FILTER_QUARTER="$BENCHMARK_FILTER_QUARTER" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_MERGE_TRIALS="$BENCHMARK_MERGE_TRIALS" \
+    --conf spark.kubernetes.driverEnv.BENCHMARK_MERGE_INCLUDE_ALL_MONTHS="$BENCHMARK_MERGE_INCLUDE_ALL_MONTHS" \
     --conf spark.kubernetes.driverEnv.TMPDIR="$TMPDIR" \
     --conf spark.executorEnv.TMPDIR="$TMPDIR" \
     \
@@ -207,11 +229,14 @@ submit_silver_job() {
     --conf spark.executor.extraJavaOptions="-Djava.io.tmpdir=$TMPDIR" \
     --conf spark.driver.memory="$SPARK_DRIVER_MEMORY" \
     --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
+    --conf spark.executor.cores="$SPARK_EXECUTOR_CORES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
+    --conf spark.driver.memoryOverhead="$SPARK_DRIVER_MEMORY_OVERHEAD" \
+    --conf spark.executor.memoryOverhead="$SPARK_EXECUTOR_MEMORY_OVERHEAD" \
     --conf spark.kubernetes.driver.request.cores=0.5 \
     --conf spark.kubernetes.driver.limit.cores=1.5 \
-    --conf spark.kubernetes.executor.request.cores=1 \
-    --conf spark.kubernetes.executor.limit.cores=3 \
+    --conf spark.kubernetes.executor.request.cores="$SPARK_EXECUTOR_CORES" \
+    --conf spark.kubernetes.executor.limit.cores="$SPARK_EXECUTOR_CORES" \
     \
     --conf spark.sql.shuffle.partitions="$SPARK_SHUFFLE_PARTITIONS" \
     --conf spark.sql.adaptive.enabled=true \

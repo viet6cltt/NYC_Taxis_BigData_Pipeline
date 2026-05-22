@@ -38,13 +38,15 @@ GOLD_PREDICTIONS_PATH="${GOLD_PREDICTIONS_PATH:-s3a://lakehouse/gold/ml/predicti
 CHECKPOINT_LOCATION="${CHECKPOINT_LOCATION:-s3a://lakehouse/_checkpoints/gold/ml/stream_predict}"
 TRIGGER_INTERVAL="${TRIGGER_INTERVAL:-30 seconds}"
 STARTING_VERSION="${STARTING_VERSION:-}"
-MAX_FILES_PER_TRIGGER="${MAX_FILES_PER_TRIGGER:-4}"
+MAX_FILES_PER_TRIGGER="${MAX_FILES_PER_TRIGGER:-1}"
+PREDICTION_LOG_SAMPLE_ROWS="${PREDICTION_LOG_SAMPLE_ROWS:-10}"
 SPARK_DRIVER_MEMORY="${SPARK_DRIVER_MEMORY:-2g}"
 SPARK_DRIVER_MEMORY_OVERHEAD="${SPARK_DRIVER_MEMORY_OVERHEAD:-1g}"
 SPARK_EXECUTOR_INSTANCES="${SPARK_EXECUTOR_INSTANCES:-1}"
-SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-4g}"
+SPARK_EXECUTOR_CORES="${SPARK_EXECUTOR_CORES:-1}"
+SPARK_EXECUTOR_MEMORY="${SPARK_EXECUTOR_MEMORY:-3g}"
 SPARK_EXECUTOR_MEMORY_OVERHEAD="${SPARK_EXECUTOR_MEMORY_OVERHEAD:-1g}"
-SPARK_WAIT_APP_COMPLETION="${SPARK_WAIT_APP_COMPLETION:-true}"
+SPARK_WAIT_APP_COMPLETION="${SPARK_WAIT_APP_COMPLETION:-false}"
 SPARK_DYNAMIC_ALLOCATION_ENABLED="${SPARK_DYNAMIC_ALLOCATION_ENABLED:-false}"
 SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED="${SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED:-true}"
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS:-1}"
@@ -54,6 +56,9 @@ N_LOCATION_CLUSTERS="${N_LOCATION_CLUSTERS:-5}"
 N_TEMPORAL_CLUSTERS="${N_TEMPORAL_CLUSTERS:-4}"
 
 echo "--- Submitting Streaming Inference job to Kubernetes ---"
+echo "    MAX_FILES_PER_TRIGGER=${MAX_FILES_PER_TRIGGER}"
+echo "    PREDICTION_LOG_SAMPLE_ROWS=${PREDICTION_LOG_SAMPLE_ROWS}"
+echo "    Spark executors: ${SPARK_EXECUTOR_INSTANCES} x ${SPARK_EXECUTOR_CORES} cores, ${SPARK_EXECUTOR_MEMORY}"
 
 starting_version_conf=()
 if [ -n "$STARTING_VERSION" ]; then
@@ -106,6 +111,7 @@ fi
     --conf spark.kubernetes.driverEnv.CHECKPOINT_LOCATION="$CHECKPOINT_LOCATION" \
     --conf spark.kubernetes.driverEnv.TRIGGER_INTERVAL="$TRIGGER_INTERVAL" \
     --conf spark.kubernetes.driverEnv.MAX_FILES_PER_TRIGGER="$MAX_FILES_PER_TRIGGER" \
+    --conf spark.kubernetes.driverEnv.PREDICTION_LOG_SAMPLE_ROWS="$PREDICTION_LOG_SAMPLE_ROWS" \
     --conf spark.kubernetes.driverEnv.N_LOCATION_CLUSTERS="$N_LOCATION_CLUSTERS" \
     --conf spark.kubernetes.driverEnv.N_TEMPORAL_CLUSTERS="$N_TEMPORAL_CLUSTERS" \
     --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
@@ -121,8 +127,11 @@ fi
     --conf spark.driver.memory="$SPARK_DRIVER_MEMORY" \
     --conf spark.driver.memoryOverhead="$SPARK_DRIVER_MEMORY_OVERHEAD" \
     --conf spark.executor.instances="$SPARK_EXECUTOR_INSTANCES" \
+    --conf spark.executor.cores="$SPARK_EXECUTOR_CORES" \
     --conf spark.executor.memory="$SPARK_EXECUTOR_MEMORY" \
     --conf spark.executor.memoryOverhead="$SPARK_EXECUTOR_MEMORY_OVERHEAD" \
+    --conf spark.kubernetes.executor.request.cores="$SPARK_EXECUTOR_CORES" \
+    --conf spark.kubernetes.executor.limit.cores="$SPARK_EXECUTOR_CORES" \
     --conf spark.sql.shuffle.partitions=4 \
     \
     "${dynamic_allocation_conf[@]}" \

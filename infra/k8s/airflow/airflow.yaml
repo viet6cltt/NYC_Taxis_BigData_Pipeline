@@ -52,21 +52,25 @@ spec:
             - name: NYC_TAXI_MLOPS_DRIVER_MEMORY
               value: "2g"
             - name: NYC_TAXI_MLOPS_EXECUTOR_MEMORY
-              value: "8g"
+              value: "7g"
             - name: NYC_TAXI_MLOPS_DRIVER_MEMORY_OVERHEAD
-              value: "1g"
+              value: "2g"
             - name: NYC_TAXI_MLOPS_EXECUTOR_MEMORY_OVERHEAD
-              value: "3g"
+              value: "2g"
             - name: NYC_TAXI_MLOPS_EXECUTOR_INSTANCES
-              value: "3"
+              value: "2"
             - name: NYC_TAXI_MLOPS_EXECUTOR_CORES
               value: "2"
             - name: NYC_TAXI_XGB_NUM_WORKERS
-              value: "3"
+              value: "2"
+            - name: NYC_TAXI_XGB_MAX_TRAIN_ROWS
+              value: "0"
             - name: NYC_TAXI_MLOPS_FEATURE_DRIVER_MEMORY
               value: "2g"
             - name: NYC_TAXI_MLOPS_FEATURE_EXECUTOR_MEMORY
               value: "4g"
+            - name: NYC_TAXI_MLOPS_FEATURE_EXECUTOR_INSTANCES
+              value: "2"
             - name: NYC_TAXI_MLOPS_FEATURE_EXECUTOR_CORES
               value: "1"
             - name: NYC_TAXI_MINIO_ENDPOINT
@@ -114,8 +118,9 @@ spec:
                 --lastname Taxi \
                 --role Admin \
                 --email admin@example.com || true
-              airflow scheduler &
-              exec airflow webserver --host 0.0.0.0 --port 8080
+              airflow dags reserialize
+              airflow webserver --host 0.0.0.0 --port 8080 &
+              exec airflow scheduler
           resources:
             requests:
               cpu: "500m"

@@ -31,6 +31,7 @@ RANDOM_STATE   = int(os.getenv("RANDOM_STATE", "42"))
 PROMOTE_THRESHOLD_R2 = float(os.getenv("PROMOTE_THRESHOLD_R2", "0.7"))
 AUTO_PROMOTE = _as_bool(os.getenv("AUTO_PROMOTE", "true"), default=True)
 XGB_NUM_WORKERS = int(os.getenv("XGB_NUM_WORKERS", "2"))
+XGB_MAX_TRAIN_ROWS = int(os.getenv("XGB_MAX_TRAIN_ROWS", "0"))
 SPLIT_STRATEGY = os.getenv("SPLIT_STRATEGY", "random").strip().lower()
 TIME_SPLIT_MONTH = os.getenv("TIME_SPLIT_MONTH", "2024-11")
 
@@ -75,6 +76,7 @@ XGB_PARAMS = {
     "learning_rate":   float(os.getenv("XGB_LEARNING_RATE", "0.1")),
     "subsample":       float(os.getenv("XGB_SUBSAMPLE", "0.8")),
     "colsample_bytree": float(os.getenv("XGB_COLSAMPLE", "0.8")),
+    "max_bin":         int(os.getenv("XGB_MAX_BIN", "128")),
     "random_state":    RANDOM_STATE,
     "eval_metric":     "rmse",
     "objective":       "reg:squarederror",

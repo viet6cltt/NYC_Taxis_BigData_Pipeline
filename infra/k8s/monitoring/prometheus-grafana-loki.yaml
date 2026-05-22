@@ -649,6 +649,45 @@ data:
           ],
           "title": "Spark Batch/Training Benchmark Logs",
           "type": "logs"
+        },
+        {
+          "datasource": "Loki",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD"
+            },
+            "overrides": []
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 50},
+          "id": 13,
+          "targets": [
+            {
+              "expr": "avg_over_time({namespace=\"lakehouse\"} |= \"[stream_predict][prediction_batch]\" | regexp \"\\\\[stream_predict\\\\]\\\\[prediction_batch\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | unwrap avg_predicted_fare_amount [$__interval])",
+              "legendFormat": "batch avg"
+            },
+            {
+              "expr": "min_over_time({namespace=\"lakehouse\"} |= \"[stream_predict][prediction_batch]\" | regexp \"\\\\[stream_predict\\\\]\\\\[prediction_batch\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | unwrap min_predicted_fare_amount [$__interval])",
+              "legendFormat": "batch min"
+            },
+            {
+              "expr": "max_over_time({namespace=\"lakehouse\"} |= \"[stream_predict][prediction_batch]\" | regexp \"\\\\[stream_predict\\\\]\\\\[prediction_batch\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | unwrap max_predicted_fare_amount [$__interval])",
+              "legendFormat": "batch max"
+            }
+          ],
+          "title": "Streaming Predicted Fare By Batch",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Loki",
+          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 50},
+          "id": 14,
+          "targets": [
+            {
+              "expr": "{namespace=\"lakehouse\"} |= \"[stream_predict][prediction]\" | regexp \"\\\\[stream_predict\\\\]\\\\[prediction\\\\] (?P<json>.*)\" | line_format \"{{.json}}\" | json | line_format \"batch={{.batch_id}} trip={{.trip_id}} fare={{.predicted_fare_amount}} month={{.year_month}} pickup={{.pickup_datetime}} route={{.pulocation_id}}->{{.dolocation_id}} model={{.model_version}}\""
+            }
+          ],
+          "title": "Streaming Prediction Logs",
+          "type": "logs"
         }
       ],
       "schemaVersion": 39,

@@ -6,7 +6,7 @@ metadata:
   labels:
     app: spark-pod-cleaner
 spec:
-  schedule: "5 * * * *"
+  schedule: "2 * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 0
   failedJobsHistoryLimit: 1
@@ -25,7 +25,7 @@ spec:
           containers:
             - name: spark-driver-cleaner
               image: 10.148.0.2:5000/kubectl:v1.35.4
-              imagePullPolicy: IfNotPresent
+              imagePullPolicy: Always
               command:
                 - kubectl
               args:

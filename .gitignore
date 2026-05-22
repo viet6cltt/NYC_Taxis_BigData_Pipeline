@@ -22,3 +22,6 @@ _local_delta_store/
 
 
 .agent/*
+
+benchmark_results/*
+mlflow_artifacts/*

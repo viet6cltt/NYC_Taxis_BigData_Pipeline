@@ -53,6 +53,7 @@ SPARK_DYNAMIC_ALLOCATION_SHUFFLE_TRACKING_ENABLED="${SPARK_DYNAMIC_ALLOCATION_SH
 SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MIN_EXECUTORS:-1}"
 SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_MAX_EXECUTORS:-2}"
 SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS="${SPARK_DYNAMIC_ALLOCATION_INITIAL_EXECUTORS:-$SPARK_EXECUTOR_INSTANCES}"
+SPARK_SQL_SHUFFLE_PARTITIONS="${SPARK_SQL_SHUFFLE_PARTITIONS:-4}"
 
 # Image
 REGISTRY="${REGISTRY:-localhost:5000}"
@@ -155,7 +156,7 @@ submit_streaming_job() {
     --conf spark.kubernetes.executor.request.cores=0.5 \
     --conf spark.kubernetes.executor.limit.cores=1 \
     \
-    --conf spark.sql.shuffle.partitions=4 \
+    --conf spark.sql.shuffle.partitions="$SPARK_SQL_SHUFFLE_PARTITIONS" \
     --conf spark.sql.adaptive.enabled=true \
     --conf spark.sql.adaptive.coalescePartitions.enabled=true \
     \
